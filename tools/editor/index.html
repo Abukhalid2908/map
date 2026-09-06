@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MM2100 · Editor lokal</title>
+  </head>
+  <body>
+    <header>
+      <h1>MM2100 <small>Editor data lokal</small></h1>
+      <p>
+        Impor, periksa, dan ekspor data. Perubahan hanya ada di sesi ini sampai
+        Anda mengunduh JSON.
+      </p>
+      <div class="actions">
+        <label class="button"
+          >Impor JSON<input
+            id="import"
+            type="file"
+            accept=".json,application/json"
+            hidden /></label
+        ><button id="export">Ekspor master JSON</button
+        ><button id="export-public">Ekspor data publik</button
+        ><button id="add">Tambah fasilitas</button>
+      </div>
+      <p id="dirty" role="status">Belum ada perubahan.</p>
+      <pre id="message" role="status"></pre>
+    </header>
+    <main>
+      <aside>
+        <h2>Fasilitas</h2>
+        <div id="entries"></div>
+      </aside>
+      <section>
+        <form id="form">
+          <h2>Detail fasilitas</h2>
+          <p>
+            Klik peta untuk memilih koordinat. Cocokkan titik dengan alamat dan
+            akses masuk sebelum verifikasi. Batas kawasan belum tersedia.
+          </p>
+          <div id="fields"></div>
+          <div class="actions">
+            <button type="submit">Terapkan perubahan</button
+            ><button id="delete" type="button">Hapus fasilitas</button>
+          </div>
+        </form>
+      </section>
+      <section class="map-column">
+        <div id="map"></div>
+        <p id="coordinates">
+          Pilih fasilitas lalu klik peta. Klik tidak menjamin ketepatan lokasi.
+        </p>
+      </section>
+    </main>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
