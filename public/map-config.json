@@ -6,5 +6,6 @@
     107.099
   ],
   "zoom": 14,
-  "reference": null
+  "reference": null,
+  "vector_style_url": "https://tiles.openfreemap.org/styles/liberty"
 }

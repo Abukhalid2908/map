@@ -64,3 +64,15 @@ Belum termasuk data fasilitas nyata, batas resmi kawasan, layanan routing intern
 ### Catatan lingkungan dan dependensi
 
 Build statis berhasil menggunakan Node 22. Node 24 pada mesin ini mengalami crash saat proses prerender ditutup; gunakan Node 22 untuk build. Pemeriksaan audit masih menandai dependensi transitif tooling (termasuk image-size tanpa patch yang tersedia saat pemeriksaan). React dan Vite telah dipatch. Artefak hosting hanya statis, tanpa server functions, image processing, editor, atau runtime backend. Jangan menganggap seluruh dependency tree bebas temuan; evaluasi ulang sebelum menambahkan backend atau membuka server dev ke jaringan.
+
+## Mode 3D
+
+Tombol 2D/3D mempertahankan posisi dan zoom terakhir saat berganti renderer. Peta 2D menggunakan Leaflet sebagai cadangan yang tidak memerlukan WebGL. Mode 3D memuat MapLibre 6.7.0 secara dinamis dan menggunakan style Liberty OpenFreeMap. Worker MapLibre dikemas eksplisit melalui Vite agar tidak merujuk ke path worker yang hilang setelah bundling.
+
+Bangunan menggunakan layer building-3d dan atribut render_height/render_min_height dari penyedia. Tinggi visual mungkin hasil perkiraan, bukan hasil survei; tidak ditampilkan sebagai ukuran terverifikasi. Tidak ada gedung buatan yang ditambahkan. Fokus bangunan tersedia memilih geometri terdekat dari tile yang sudah dimuat, bukan memindai seluruh kawasan. Jika tidak ada bangunan terlihat, pengguna mendapat keterangan untuk memperbesar atau menggeser peta. Jumlah fitur vektor tidak sama dengan jumlah bangunan: sebuah fitur dapat memuat banyak poligon.
+
+Kontrol meliputi zoom, kembali ke kawasan, dan arah utara. Pilihan 3D menggunakan kemiringan 55 derajat. Reduced motion meniadakan animasi kamera pemilihan/reset/fokus. Jika inisialisasi WebGL gagal atau konteks grafis hilang, aplikasi kembali ke Leaflet 2D. Kesalahan jaringan dan timeout menyediakan pilihan mencoba lagi atau kembali ke 2D. Editor lokal tetap menggunakan Leaflet.
+
+Sumber: https://openfreemap.org/quick_start/ dan https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/.
+
+Uji fungsional browser menggunakan Edge headless dengan software WebGL pada viewport desktop dan 390×844. Ini memeriksa fungsi render dan tata letak; bukan pengukuran performa GPU/baterai pada ponsel fisik. Data fasilitas masih demonstrasi. Peta 3D belum menyediakan model fotorealistis atau routing internal.

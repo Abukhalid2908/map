@@ -510,7 +510,9 @@ export default function Home() {
             tol belum tersedia karena belum diverifikasi.
           </p>
           <p>
-            Peta menggunakan layanan eksternal OpenStreetMap. Tidak ada unduhan
+            Peta 2D menggunakan OpenStreetMap; peta 3D menggunakan OpenFreeMap
+            dengan data OpenStreetMap. Bentuk dan tinggi bangunan mengikuti data
+            penyedia dan belum diverifikasi melalui survei. Tidak ada unduhan
             peta offline.
           </p>
           <a

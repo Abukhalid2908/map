@@ -1,165 +1,59 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
-import { Plus, Minus, Maximize, RefreshCw } from 'lucide-react';
-import type * as Leaflet from 'leaflet';
+import { useRef, useState } from 'react';
+import { Box, Map as MapIcon } from 'lucide-react';
+import LeafletMap from './LeafletMap';
+import Map3D from './Map3D';
 import type { Facility } from '@/lib/facilities';
-export default function MapView({
-  facilities,
-  selected,
-  onSelect,
-  origin,
-}: {
+export type MapCamera = { center: [number, number]; zoom: number };
+export type MapProps = {
   facilities: Facility[];
   selected: Facility | null;
   onSelect: (f: Facility) => void;
   origin?: { latitude: number; longitude: number; accuracy: number } | null;
-}) {
-  const container = useRef<HTMLDivElement>(null),
-    map = useRef<Leaflet.Map | null>(null),
-    layer = useRef<Leaflet.LayerGroup | null>(null),
-    leaflet = useRef<typeof Leaflet | null>(null);
-  const [ready, setReady] = useState(false),
-    [error, setError] = useState(false),
-    [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    let disposed = false,
-      observer: ResizeObserver | undefined;
-    Promise.all([
-      import('leaflet'),
-      fetch('/map-config.json').then(async (r) => {
-        if (!r.ok) throw Error();
-        return r.json() as Promise<{
-          tile_url: string;
-          attribution: string;
-          center: [number, number];
-          zoom: number;
-        }>;
-      }),
-    ])
-      .then(([L, config]) => {
-        if (disposed || !container.current) return;
-        if (
-          typeof config.tile_url !== 'string' ||
-          !config.tile_url.startsWith('https://') ||
-          !Array.isArray(config.center) ||
-          config.center.length !== 2 ||
-          !config.center.every(Number.isFinite)
-        )
-          throw Error();
-        leaflet.current = L;
-        const m = L.map(container.current, { zoomControl: false }).setView(
-          config.center,
-          config.zoom,
-        );
-        map.current = m;
-        const tiles = L.tileLayer(config.tile_url, {
-          maxZoom: 19,
-          attribution: config.attribution,
-        }).addTo(m);
-        tiles.on('tileerror', () => setError(true));
-        layer.current = L.layerGroup().addTo(m);
-        setReady(true);
-        observer = new ResizeObserver(() => m.invalidateSize());
-        observer.observe(container.current);
-      })
-      .catch(() => {
-        if (!disposed) setError(true);
-      });
-    return () => {
-      disposed = true;
-      observer?.disconnect();
-      map.current?.remove();
-      map.current = null;
-    };
-  }, [attempt]);
-  useEffect(() => {
-    if (!ready || !layer.current || !leaflet.current) return;
-    layer.current.clearLayers();
-    const L = leaflet.current,
-      group = layer.current;
-    const symbols: Record<string, string> = {
-      resto_cafe: 'C',
-      hotel: 'H',
-      food_court: 'F',
-      atm: 'A',
-      medical: '+',
-      public_facility: 'i',
-    };
-    facilities.forEach((f) => {
-      const icon = L.divIcon({
-        className: 'map-pin tone-' + f.category,
-        html: '<span><b>' + symbols[f.category] + '</b></span>',
-        iconSize: [38, 44],
-        iconAnchor: [19, 44],
-      });
-      L.marker([f.latitude, f.longitude], { icon, title: f.name, alt: f.name })
-        .addTo(group)
-        .on('click', () => onSelect(f));
-    });
-  }, [facilities, ready, onSelect]);
-  useEffect(() => {
-    if (ready && selected)
-      map.current?.panTo([selected.latitude, selected.longitude]);
-  }, [selected, ready]);
-  useEffect(() => {
-    if (!ready || !origin || !map.current || !leaflet.current) return;
-    const L = leaflet.current;
-    const circle = L.circle([origin.latitude, origin.longitude], {
-      radius: origin.accuracy,
-      color: '#397fc0',
-      fillOpacity: 0.08,
-      weight: 1,
-    }).addTo(map.current);
-    const dot = L.circleMarker([origin.latitude, origin.longitude], {
-      radius: 7,
-      color: '#fff',
-      weight: 3,
-      fillColor: '#397fc0',
-      fillOpacity: 1,
-    }).addTo(map.current);
-    return () => {
-      circle.remove();
-      dot.remove();
-    };
-  }, [origin, ready]);
+};
+export default function MapView(props: MapProps) {
+  const [mode, setMode] = useState<'2d' | '3d'>('2d');
+  const [fallback, setFallback] = useState('');
+  const camera = useRef<MapCamera>({ center: [107.099, -6.297], zoom: 14 });
   return (
     <>
-      <div ref={container} className="leaflet-map" />
-      <div className="map-controls">
-        <button
-          aria-label="Perbesar peta"
-          onClick={() => map.current?.zoomIn()}
-        >
-          <Plus size={19} />
-        </button>
-        <button
-          aria-label="Perkecil peta"
-          onClick={() => map.current?.zoomOut()}
-        >
-          <Minus size={19} />
-        </button>
-        <button
-          aria-label="Kembali ke kawasan"
-          onClick={() => map.current?.setView([-6.297, 107.099], 14)}
-        >
-          <Maximize size={18} />
-        </button>
-      </div>
-      {error && (
-        <output className="map-error">
-          Sebagian peta gagal dimuat. Daftar tetap bisa digunakan.
-          <button
-            onClick={() => {
-              setError(false);
-              setReady(false);
-              setAttempt((n) => n + 1);
-            }}
-          >
-            <RefreshCw size={14} />
-            Coba lagi
-          </button>
-        </output>
+      {mode === '2d' ? (
+        <LeafletMap {...props} camera={camera} />
+      ) : (
+        <Map3D
+          {...props}
+          camera={camera}
+          onFallback={() => {
+            setMode('2d');
+            setFallback(
+              'Mode 3D tidak dapat dijalankan. Peta 2D tetap tersedia.',
+            );
+          }}
+        />
       )}
+      <fieldset className="view-mode" aria-label="Mode tampilan peta">
+        <button
+          aria-pressed={mode === '2d'}
+          onClick={() => {
+            setMode('2d');
+            setFallback('');
+          }}
+        >
+          <MapIcon size={15} />
+          2D
+        </button>
+        <button
+          aria-pressed={mode === '3d'}
+          onClick={() => {
+            setMode('3d');
+            setFallback('');
+          }}
+        >
+          <Box size={15} />
+          3D
+        </button>
+      </fieldset>
+      {fallback && <output className="three-status">{fallback}</output>}
     </>
   );
 }

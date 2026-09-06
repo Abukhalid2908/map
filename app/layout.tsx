@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import 'leaflet/dist/leaflet.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import './globals.css';
 export const metadata: Metadata = {
+  icons: { icon: '/favicon.svg' },
   title: 'MM2100 · Jelajah Kawasan',
   description:
     'Peta interaktif dan direktori fasilitas kawasan MM2100. Temukan tempat makan, hotel, ATM, dan layanan umum.',
