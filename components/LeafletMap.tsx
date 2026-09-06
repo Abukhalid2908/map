@@ -1,6 +1,9 @@
 'use client';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Plus, Minus, Maximize, RefreshCw } from 'lucide-react';
+import { groupPoints } from '@/lib/map-markers.mjs';
+import { markerFace, clusterChoices } from '@/lib/marker-elements';
+import { distanceKm } from '@/lib/data.mjs';
 import type * as Leaflet from 'leaflet';
 import type { MapCamera } from './MapView';
 import type { Facility } from '@/lib/facilities';
@@ -10,8 +13,15 @@ export default function LeafletMap({
   onSelect,
   origin,
   camera,
+  claimLocation,
 }: {
   camera: RefObject<MapCamera>;
+  claimLocation?: (
+    origin:
+      | { latitude: number; longitude: number; accuracy: number }
+      | null
+      | undefined,
+  ) => boolean;
   facilities: Facility[];
   selected: Facility | null;
   onSelect: (f: Facility) => void;
@@ -57,6 +67,7 @@ export default function LeafletMap({
         map.current = m;
         m.on('moveend', () => {
           camera.current = {
+            ...camera.current,
             center: [m.getCenter().lng, m.getCenter().lat],
             zoom: m.getZoom(),
           };
@@ -79,6 +90,7 @@ export default function LeafletMap({
       observer?.disconnect();
       if (map.current) {
         camera.current = {
+          ...camera.current,
           center: [map.current.getCenter().lng, map.current.getCenter().lat],
           zoom: map.current.getZoom(),
         };
@@ -88,29 +100,64 @@ export default function LeafletMap({
     };
   }, [attempt, camera]);
   useEffect(() => {
-    if (!ready || !layer.current || !leaflet.current) return;
-    layer.current.clearLayers();
+    if (!ready || !layer.current || !leaflet.current || !map.current) return;
     const L = leaflet.current,
-      group = layer.current;
-    const symbols: Record<string, string> = {
-      resto_cafe: 'C',
-      hotel: 'H',
-      food_court: 'F',
-      atm: 'A',
-      medical: '+',
-      public_facility: 'i',
+      m = map.current,
+      layerGroup = layer.current;
+    function render() {
+      layerGroup.clearLayers();
+      for (const group of groupPoints(
+        facilities,
+        (f) => m.latLngToContainerPoint([f.latitude, f.longitude]),
+        48,
+      )) {
+        const first = group.items[0],
+          cluster = group.items.length > 1,
+          same = group.items.every((f) => f.category === first.category);
+        const icon = L.divIcon({
+          className: 'category-pin tone-' + (same ? first.category : 'mixed'),
+          html: markerFace(group.items),
+          iconSize: [44, 50],
+          iconAnchor: [22, 50],
+        });
+        const marker = L.marker([group.latitude, group.longitude], {
+          icon,
+          title: cluster
+            ? group.items.length + ' lokasi berdekatan'
+            : first.name,
+          alt: cluster
+            ? 'Buka ' + group.items.length + ' lokasi berdekatan'
+            : first.name,
+        }).addTo(layerGroup);
+        marker.on('click', () => {
+          if (!cluster) {
+            onSelect(first);
+            return;
+          }
+          if (m.getZoom() < 17.9)
+            m.setView(
+              [group.latitude, group.longitude],
+              Math.min(19, m.getZoom() + 2),
+            );
+          else
+            marker
+              .bindPopup(
+                clusterChoices(group.items, (f) => {
+                  m.closePopup();
+                  onSelect(f);
+                }),
+              )
+              .openPopup();
+        });
+      }
+    }
+    render();
+    m.on('moveend', render);
+    return () => {
+      m.off('moveend', render);
+      layerGroup.clearLayers();
+      m.closePopup();
     };
-    facilities.forEach((f) => {
-      const icon = L.divIcon({
-        className: 'map-pin tone-' + f.category,
-        html: '<span><b>' + symbols[f.category] + '</b></span>',
-        iconSize: [38, 44],
-        iconAnchor: [19, 44],
-      });
-      L.marker([f.latitude, f.longitude], { icon, title: f.name, alt: f.name })
-        .addTo(group)
-        .on('click', () => onSelect(f));
-    });
   }, [facilities, ready, onSelect]);
   useEffect(() => {
     if (ready && selected)
@@ -118,6 +165,9 @@ export default function LeafletMap({
   }, [selected, ready]);
   useEffect(() => {
     if (!ready || !origin || !map.current || !leaflet.current) return;
+    if (claimLocation?.(origin)) {
+      map.current.setView([origin.latitude, origin.longitude], 16);
+    }
     const L = leaflet.current;
     const circle = L.circle([origin.latitude, origin.longitude], {
       radius: origin.accuracy,
@@ -136,10 +186,19 @@ export default function LeafletMap({
       circle.remove();
       dot.remove();
     };
-  }, [origin, ready]);
+  }, [origin, ready, claimLocation]);
   return (
     <>
       <div ref={container} className="leaflet-map" />
+      {origin &&
+        distanceKm(origin, { latitude: -6.297, longitude: 107.099 }) > 10 && (
+          <button
+            className="area-return"
+            onClick={() => map.current?.setView([-6.297, 107.099], 14)}
+          >
+            Ke kawasan MM2100 →
+          </button>
+        )}
       <div className="map-controls">
         <button
           aria-label="Perbesar peta"

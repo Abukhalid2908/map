@@ -974,3 +974,125 @@ h1 > span {
     max-width: 265px;
   }
 }
+.gl-pin,
+.category-pin {
+  width: 44px;
+  height: 50px;
+  background: transparent !important;
+  overflow: visible;
+}
+.gl-pin span.marker-face,
+.category-pin .marker-face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  border: 2px solid #fff;
+  background:
+    linear-gradient(145deg, #fff 3%, #fff7 50%, #0001 100%), currentColor;
+  box-shadow:
+    0 5px 0 #33533380,
+    0 8px 12px #15352945,
+    inset 0 2px 2px #fff;
+  transform: none;
+}
+.marker-face svg {
+  color: #264a35;
+  filter: drop-shadow(0 1px 0 #fff);
+  position: relative;
+  z-index: 1;
+}
+.tone-resto_cafe .marker-face svg {
+  color: #90613b;
+}
+.tone-hotel .marker-face svg {
+  color: #65598d;
+}
+.tone-food_court .marker-face svg {
+  color: #a66327;
+}
+.tone-atm .marker-face svg {
+  color: #34754c;
+}
+.tone-medical .marker-face svg {
+  color: #a24743;
+}
+.tone-public_facility .marker-face svg {
+  color: #3b6e86;
+}
+.tone-mixed {
+  color: #7d9789;
+}
+.cluster-count {
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  background: #245c43;
+  color: #fff;
+  border: 2px solid white;
+  border-radius: 20px;
+  min-width: 24px;
+  height: 24px;
+  padding: 2px 4px;
+  display: grid;
+  place-items: center;
+  font: 700 11px Arial;
+  z-index: 2;
+}
+.cluster-choices {
+  display: grid;
+  gap: 5px;
+  max-height: 220px;
+  overflow: auto;
+  min-width: 170px;
+  color: #284a32;
+}
+.cluster-choices strong {
+  padding: 5px;
+}
+.cluster-choices button {
+  border: 0;
+  background: #eef4e9;
+  border-radius: 5px;
+  text-align: left;
+  padding: 9px;
+  font-size: 12px;
+}
+.area-return {
+  position: absolute;
+  right: 24px;
+  bottom: 210px;
+  background: #245c43;
+  color: white;
+  border: 1px solid #fff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 11px;
+  box-shadow: 0 3px 10px #23361c20;
+}
+.gl-pin.selected .marker-face {
+  outline: 3px solid #245c43;
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  .location-control {
+    max-width: 215px;
+  }
+  .area-return {
+    top: 165px;
+    left: 12px;
+    right: auto;
+    bottom: auto;
+    padding: 8px 10px;
+    z-index: 2;
+  }
+  .three-status {
+    max-width: 230px;
+    font-size: 9px;
+  }
+  .map-area:has(.area-return) {
+    min-height: 365px;
+  }
+}

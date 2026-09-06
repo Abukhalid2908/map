@@ -1,28 +1,39 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { Box, Map as MapIcon } from 'lucide-react';
 import LeafletMap from './LeafletMap';
 import Map3D from './Map3D';
 import type { Facility } from '@/lib/facilities';
-export type MapCamera = { center: [number, number]; zoom: number };
+export type MapCamera = {
+  center: [number, number];
+  zoom: number;
+};
 export type MapProps = {
+  claimLocation?: (origin: MapProps['origin']) => boolean;
   facilities: Facility[];
   selected: Facility | null;
   onSelect: (f: Facility) => void;
   origin?: { latitude: number; longitude: number; accuracy: number } | null;
 };
 export default function MapView(props: MapProps) {
-  const [mode, setMode] = useState<'2d' | '3d'>('2d');
+  const [mode, setMode] = useState<'2d' | '3d'>('3d');
   const [fallback, setFallback] = useState('');
   const camera = useRef<MapCamera>({ center: [107.099, -6.297], zoom: 14 });
+  const lastLocatedOrigin = useRef<MapProps['origin']>(null);
+  const claimLocation = useCallback((origin: MapProps['origin']) => {
+    if (lastLocatedOrigin.current === origin) return false;
+    lastLocatedOrigin.current = origin;
+    return true;
+  }, []);
   return (
     <>
       {mode === '2d' ? (
-        <LeafletMap {...props} camera={camera} />
+        <LeafletMap {...props} camera={camera} claimLocation={claimLocation} />
       ) : (
         <Map3D
           {...props}
           camera={camera}
+          claimLocation={claimLocation}
           onFallback={() => {
             setMode('2d');
             setFallback(

@@ -3,6 +3,9 @@ import { useEffect, useRef, useState, type RefObject } from 'react';
 import { Plus, Minus, Maximize, Compass, RefreshCw } from 'lucide-react';
 import type * as ML from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
+import { groupPoints } from '@/lib/map-markers.mjs';
+import { markerFace, clusterChoices } from '@/lib/marker-elements';
+import { distanceKm } from '@/lib/data.mjs';
 import type { MapProps, MapCamera } from './MapView';
 type Config = {
   vector_style_url: string;
@@ -15,6 +18,7 @@ export default function Map3D({
   onSelect,
   origin,
   camera,
+  claimLocation,
   onFallback,
 }: MapProps & { camera: RefObject<MapCamera>; onFallback: () => void }) {
   const container = useRef<HTMLDivElement>(null),
@@ -63,7 +67,7 @@ export default function Map3D({
             style: config.vector_style_url,
             center: camera.current.center,
             zoom: Math.max(camera.current.zoom, 15.8),
-            pitch: 55,
+            pitch: 45,
             bearing: -18,
             maxPitch: 65,
             maxZoom: 19,
@@ -121,6 +125,7 @@ export default function Map3D({
         });
         m.on('moveend', () => {
           camera.current = {
+            ...camera.current,
             center: m.getCenter().toArray() as [number, number],
             zoom: m.getZoom(),
           };
@@ -180,6 +185,7 @@ export default function Map3D({
       observer?.disconnect();
       if (map.current) {
         camera.current = {
+          ...camera.current,
           center: map.current.getCenter().toArray() as [number, number],
           zoom: map.current.getZoom(),
         };
@@ -192,36 +198,80 @@ export default function Map3D({
     if (!ready || !map.current || !engine.current) return;
     const m = map.current,
       lib = engine.current;
-    const symbols: Record<string, string> = {
-      resto_cafe: 'C',
-      hotel: 'H',
-      food_court: 'F',
-      atm: 'A',
-      medical: '+',
-      public_facility: 'i',
+    let markers: ML.Marker[] = [];
+    let popup: ML.Popup | undefined;
+    function render() {
+      markers.forEach((marker) => marker.remove());
+      markers = [];
+      for (const group of groupPoints(
+        facilities,
+        (f) => m.project([f.longitude, f.latitude]),
+        48,
+      )) {
+        const first = group.items[0],
+          cluster = group.items.length > 1,
+          same = group.items.every((f) => f.category === first.category);
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className =
+          'gl-pin tone-' +
+          (same ? first.category : 'mixed') +
+          (group.items.some((f) => f.id === selected?.id) ? ' selected' : '');
+        button.title = cluster
+          ? group.items.length + ' lokasi berdekatan'
+          : first.name;
+        button.setAttribute(
+          'aria-label',
+          cluster
+            ? 'Buka ' + group.items.length + ' lokasi berdekatan'
+            : 'Lihat ' + first.name,
+        );
+        button.dataset.count = String(group.items.length);
+        button.appendChild(markerFace(group.items));
+        button.onclick = (event) => {
+          event.stopPropagation();
+          if (!cluster) {
+            onSelect(first);
+            return;
+          }
+          if (m.getZoom() < 17.9) {
+            m.easeTo({
+              center: [group.longitude, group.latitude],
+              zoom: Math.min(19, m.getZoom() + 2),
+              duration: reducedMotion.current ? 0 : 450,
+            });
+          } else {
+            popup?.remove();
+            popup = new lib.Popup({ offset: 35 })
+              .setLngLat([group.longitude, group.latitude])
+              .setDOMContent(
+                clusterChoices(group.items, (f) => {
+                  popup?.remove();
+                  onSelect(f);
+                }),
+              )
+              .addTo(m);
+          }
+        };
+        markers.push(
+          new lib.Marker({
+            element: button,
+            anchor: 'bottom',
+            pitchAlignment: 'viewport',
+            rotationAlignment: 'viewport',
+          })
+            .setLngLat([group.longitude, group.latitude])
+            .addTo(m),
+        );
+      }
+    }
+    render();
+    m.on('moveend', render);
+    return () => {
+      m.off('moveend', render);
+      markers.forEach((marker) => marker.remove());
+      popup?.remove();
     };
-    const markers = facilities.map((f) => {
-      const button = document.createElement('button');
-      button.className =
-        'gl-pin tone-' +
-        f.category +
-        (selected?.id === f.id ? ' selected' : '');
-      button.title = f.name;
-      button.setAttribute('aria-label', 'Lihat ' + f.name);
-      const face = document.createElement('span');
-      face.textContent = symbols[f.category] || 'i';
-      button.appendChild(face);
-      button.onclick = () => onSelect(f);
-      return new lib.Marker({
-        element: button,
-        anchor: 'bottom',
-        pitchAlignment: 'viewport',
-        rotationAlignment: 'viewport',
-      })
-        .setLngLat([f.longitude, f.latitude])
-        .addTo(m);
-    });
-    return () => markers.forEach((marker) => marker.remove());
   }, [facilities, onSelect, ready, selected?.id]);
   useEffect(() => {
     if (ready && selected)
@@ -233,6 +283,14 @@ export default function Map3D({
   }, [selected, ready]);
   useEffect(() => {
     if (!ready || !origin || !map.current || !engine.current) return;
+    if (claimLocation?.(origin)) {
+      map.current.easeTo({
+        center: [origin.longitude, origin.latitude],
+        zoom: 16,
+        pitch: 45,
+        duration: 0,
+      });
+    }
     const point = document.createElement('div');
     point.className = 'gps-marker';
     point.title =
@@ -243,12 +301,12 @@ export default function Map3D({
     return () => {
       marker.remove();
     };
-  }, [origin, ready]);
+  }, [origin, ready, claimLocation]);
   function reset() {
     map.current?.easeTo({
       center: [107.099, -6.297],
       zoom: 15.8,
-      pitch: 55,
+      pitch: 45,
       bearing: -18,
       duration: reducedMotion.current ? 0 : 600,
     });
@@ -260,6 +318,12 @@ export default function Map3D({
         className="vector-map"
         aria-label="Peta 3D bangunan kawasan"
       />
+      {origin &&
+        distanceKm(origin, { latitude: -6.297, longitude: 107.099 }) > 10 && (
+          <button className="area-return" onClick={reset}>
+            Ke kawasan MM2100 →
+          </button>
+        )}
       <div className="map-controls">
         <button
           aria-label="Perbesar peta"
@@ -324,7 +388,7 @@ export default function Map3D({
               map.current?.easeTo({
                 center: buildingTarget,
                 zoom: 17,
-                pitch: 55,
+                pitch: 45,
                 duration: reducedMotion.current ? 0 : 650,
               })
             }

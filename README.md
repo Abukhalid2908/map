@@ -37,7 +37,7 @@ Kontrak ada di lib/data.mjs. Pemeriksaan meliputi ID unik, kategori/status valid
 
 ## Jarak, GPS, dan navigasi
 
-Haversine menghasilkan kilometer garis lurus; bukan rute/durasi. Lokasi diminta setelah tindakan pengguna, disimpan di memori sesi, dan dapat dihapus. Izin ditolak, timeout, atau lokasi tidak tersedia tidak mengubah asal yang sudah dipilih. Google Maps menerima tujuan dan, bila dipilih, asal GPS hanya ketika tautan navigasi dibuka. Produksi membutuhkan HTTPS. Titik acuan pintu tol belum diaktifkan karena belum ada koordinat terverifikasi.
+Haversine menghasilkan kilometer garis lurus; bukan rute/durasi. Izin lokasi diminta otomatis saat aplikasi dibuka; koordinat hanya digunakan setelah izin diberikan, disimpan di memori sesi, dan dapat dihapus. Izin ditolak, timeout, atau lokasi tidak tersedia tidak mengubah asal yang sudah dipilih. Google Maps menerima tujuan dan, bila dipilih, asal GPS hanya ketika tautan navigasi dibuka. Produksi membutuhkan HTTPS. Titik acuan pintu tol belum diaktifkan karena belum ada koordinat terverifikasi.
 
 ## Penyedia peta
 
@@ -71,8 +71,18 @@ Tombol 2D/3D mempertahankan posisi dan zoom terakhir saat berganti renderer. Pet
 
 Bangunan menggunakan layer building-3d dan atribut render_height/render_min_height dari penyedia. Tinggi visual mungkin hasil perkiraan, bukan hasil survei; tidak ditampilkan sebagai ukuran terverifikasi. Tidak ada gedung buatan yang ditambahkan. Fokus bangunan tersedia memilih geometri terdekat dari tile yang sudah dimuat, bukan memindai seluruh kawasan. Jika tidak ada bangunan terlihat, pengguna mendapat keterangan untuk memperbesar atau menggeser peta. Jumlah fitur vektor tidak sama dengan jumlah bangunan: sebuah fitur dapat memuat banyak poligon.
 
-Kontrol meliputi zoom, kembali ke kawasan, dan arah utara. Pilihan 3D menggunakan kemiringan 55 derajat. Reduced motion meniadakan animasi kamera pemilihan/reset/fokus. Jika inisialisasi WebGL gagal atau konteks grafis hilang, aplikasi kembali ke Leaflet 2D. Kesalahan jaringan dan timeout menyediakan pilihan mencoba lagi atau kembali ke 2D. Editor lokal tetap menggunakan Leaflet.
+Kontrol meliputi zoom, kembali ke kawasan, dan arah utara. Tampilan awal menggunakan 3D dengan kemiringan 45 derajat. Reduced motion meniadakan animasi kamera pemilihan/reset/fokus. Jika inisialisasi WebGL gagal atau konteks grafis hilang, aplikasi kembali ke Leaflet 2D. Kesalahan jaringan dan timeout menyediakan pilihan mencoba lagi atau kembali ke 2D. Editor lokal tetap menggunakan Leaflet.
 
 Sumber: https://openfreemap.org/quick_start/ dan https://maplibre.org/maplibre-gl-js/docs/examples/display-buildings-in-3d/.
 
 Uji fungsional browser menggunakan Edge headless dengan software WebGL pada viewport desktop dan 390×844. Ini memeriksa fungsi render dan tata letak; bukan pengukuran performa GPU/baterai pada ponsel fisik. Data fasilitas masih demonstrasi. Peta 3D belum menyediakan model fotorealistis atau routing internal.
+
+## Lokasi perangkat dan ikon kategori
+
+Aplikasi dibuka dalam 3D 45 derajat. Permintaan geolokasi dilakukan setelah halaman aktif dan tunduk pada izin browser; tidak ada cara melewati izin. Setelah berhasil, peta berpusat pada koordinat perangkat. Penolakan, timeout 10 detik, atau browser tanpa geolokasi tetap menyediakan peta kawasan. Koordinat berada di memori sesi dan dapat dihapus. Ketika pengguna lebih dari 10 km dari pusat kawasan, tombol Ke kawasan MM2100 tersedia. Kembali ke kawasan atau berganti mode tidak langsung dipaksa kembali ke lokasi perangkat; tombol lokasi dapat meminta pemusatan kembali.
+
+Marker menggunakan SVG Lucide bergaya timbul yang tetap menghadap layar di mode 3D: alat makan, kopi (nama/tag kafe), hotel, food court, ATM, medis, dan fasilitas umum. Kategori resto_cafe masih gabungan sesuai kontrak data. Satu record mewakili satu lokasi; food court diwakili satu record dan bukan tenant-tenant fiktif.
+
+Titik dengan jarak layar kurang dari 48 piksel dikelompokkan dan diberi angka. Klik kelompok memperbesar peta; jika tetap bertumpuk pada zoom dekat, popup menyediakan pilihan setiap fasilitas. Filter memengaruhi marker dan kelompok. Pengelompokan hanya untuk keterbacaan, bukan penggabungan record atau perubahan koordinat data asli.
+
+Pengujian browser memakai izin dan koordinat tiruan, termasuk akses luar kawasan, penolakan izin, ikon pada kedua renderer, serta dua lokasi pada koordinat yang sama. Ini bukan pengukuran akurasi GPS perangkat fisik. Data fasilitas produksi tetap kosong dengan mode demonstrasi berlabel jelas.

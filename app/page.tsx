@@ -37,6 +37,7 @@ import {
 import Link from 'next/link';
 import { flushSync } from 'react-dom';
 import MapView from '@/components/MapView';
+import { useDeviceLocation } from '@/hooks/use-device-location';
 import { categories, demoFacilities, type Facility } from '@/lib/facilities';
 
 export default function Home() {
@@ -49,14 +50,8 @@ export default function Home() {
     [dataError, setDataError] = useState(''),
     [retry, setRetry] = useState(0),
     [updated, setUpdated] = useState('');
-  const [origin, setOrigin] = useState<{
-      latitude: number;
-      longitude: number;
-      accuracy: number;
-    } | null>(null),
-    [gpsState, setGpsState] = useState(''),
-    [locating, setLocating] = useState(false),
-    [info, setInfo] = useState(false);
+  const { origin, gpsState, locating, locate, clear } = useDeviceLocation();
+  const [info, setInfo] = useState(false);
   useEffect(() => {
     const abort = new AbortController();
     fetch('/facilities.json', { signal: abort.signal })
@@ -80,40 +75,6 @@ export default function Home() {
       });
     return () => abort.abort();
   }, [retry]);
-  function locate() {
-    if (!navigator.geolocation) {
-      setGpsState('Browser ini tidak mendukung lokasi perangkat.');
-      return;
-    }
-    setLocating(true);
-    setGpsState('Meminta lokasi untuk menghitung jarak langsung…');
-    navigator.geolocation.getCurrentPosition(
-      (p) => {
-        setOrigin({
-          latitude: p.coords.latitude,
-          longitude: p.coords.longitude,
-          accuracy: p.coords.accuracy,
-        });
-        setLocating(false);
-        setGpsState(
-          'Asal: lokasi perangkat · akurasi ±' +
-            Math.round(p.coords.accuracy) +
-            ' m',
-        );
-      },
-      (e) => {
-        setLocating(false);
-        setGpsState(
-          e.code === 1
-            ? 'Izin lokasi ditolak. Aktifkan izin browser lalu coba lagi.'
-            : e.code === 3
-              ? 'Permintaan lokasi melewati batas waktu. Coba lagi.'
-              : 'Lokasi tidak tersedia. Coba lagi di tempat terbuka.',
-        );
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
-    );
-  }
   const activeRows = demo ? demoFacilities : rows;
   const icons = [Coffee, BedDouble, Utensils, Landmark, HeartPulse, Building2];
   const filtered = useMemo(
@@ -370,13 +331,7 @@ export default function Home() {
               {locating ? 'Mencari lokasi…' : 'Gunakan lokasi saya'}
             </button>
             {origin && (
-              <button
-                aria-label="Hapus lokasi perangkat"
-                onClick={() => {
-                  setOrigin(null);
-                  setGpsState('Lokasi perangkat dihapus dari sesi.');
-                }}
-              >
+              <button aria-label="Hapus lokasi perangkat" onClick={clear}>
                 <X size={15} />
               </button>
             )}
@@ -505,9 +460,9 @@ export default function Home() {
             bukan rekomendasi tempat nyata.
           </p>
           <p>
-            Lokasi perangkat diminta hanya saat Anda menekan tombol lokasi,
-            disimpan di memori sesi, dan tidak masuk dataset. Titik acuan pintu
-            tol belum tersedia karena belum diverifikasi.
+            Izin lokasi perangkat diminta saat aplikasi dibuka untuk memusatkan
+            peta. Koordinat disimpan di memori sesi, dan tidak masuk dataset.
+            Titik acuan pintu tol belum tersedia karena belum diverifikasi.
           </p>
           <p>
             Peta 2D menggunakan OpenStreetMap; peta 3D menggunakan OpenFreeMap
