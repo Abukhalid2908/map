@@ -10,10 +10,16 @@ import type { Facility } from '@/lib/facilities';
 export default function LeafletMap({
   facilities,
   selected,
+  exploreTarget,
+  mode = 'facilities',
+  plots = [],
+  selectedPlot,
+  onPlotSelect,
   onSelect,
   origin,
   camera,
   claimLocation,
+  basemap = 'street',
 }: {
   camera: RefObject<MapCamera>;
   claimLocation?: (
@@ -24,8 +30,14 @@ export default function LeafletMap({
   ) => boolean;
   facilities: Facility[];
   selected: Facility | null;
+  exploreTarget?: Facility | null;
   onSelect: (f: Facility) => void;
   origin?: { latitude: number; longitude: number; accuracy: number } | null;
+  mode?: 'facilities' | 'plots';
+  plots?: import('@/lib/plots').Plot[];
+  selectedPlot?: import('@/lib/plots').Plot | null;
+  onPlotSelect?: (p: import('@/lib/plots').Plot) => void;
+  basemap?: 'street' | 'satellite' | 'hybrid';
 }) {
   const container = useRef<HTMLDivElement>(null),
     map = useRef<Leaflet.Map | null>(null),
@@ -72,11 +84,22 @@ export default function LeafletMap({
             zoom: m.getZoom(),
           };
         });
-        const tiles = L.tileLayer(config.tile_url, {
+        const imageryUrl =
+          'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+        const tileUrl = basemap === 'street' ? config.tile_url : imageryUrl;
+        const tiles = L.tileLayer(tileUrl, {
           maxZoom: 19,
-          attribution: config.attribution,
+          attribution:
+            basemap === 'street'
+              ? config.attribution
+              : 'Tiles &copy; Esri and imagery providers',
         }).addTo(m);
         tiles.on('tileerror', () => setError(true));
+        if (basemap === 'hybrid')
+          L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+            { maxZoom: 19, attribution: '&copy; Esri' },
+          ).addTo(m);
         layer.current = L.layerGroup().addTo(m);
         setReady(true);
         observer = new ResizeObserver(() => m.invalidateSize());
@@ -98,7 +121,7 @@ export default function LeafletMap({
       }
       map.current = null;
     };
-  }, [attempt, camera]);
+  }, [attempt, basemap, camera]);
   useEffect(() => {
     if (!ready || !layer.current || !leaflet.current || !map.current) return;
     const L = leaflet.current,
@@ -107,7 +130,7 @@ export default function LeafletMap({
     function render() {
       layerGroup.clearLayers();
       for (const group of groupPoints(
-        facilities,
+        mode === 'facilities' ? facilities : [],
         (f) => m.latLngToContainerPoint([f.latitude, f.longitude]),
         48,
       )) {
@@ -158,11 +181,64 @@ export default function LeafletMap({
       layerGroup.clearLayers();
       m.closePopup();
     };
-  }, [facilities, ready, onSelect]);
+  }, [facilities, mode, ready, onSelect]);
+  useEffect(() => {
+    if (!ready || !leaflet.current || !map.current) return;
+    const L = leaflet.current;
+    const m = map.current;
+    const group = L.layerGroup().addTo(m);
+    const colors = {
+      available: '#279266',
+      reserved: '#d59a20',
+      occupied: '#c65c51',
+      utility: '#397fc0',
+    };
+    if (mode === 'plots') {
+      const bounds: L.LatLngExpression[] = [];
+      for (const p of plots) {
+        const points = p.coordinates.map(
+          ([lng, lat]) => [lat, lng] as L.LatLngTuple,
+        );
+        bounds.push(...points);
+        L.polygon(points, {
+          color: p.id === selectedPlot?.id ? '#173f31' : '#fff',
+          weight: p.id === selectedPlot?.id ? 4 : 2,
+          fillColor: colors[p.status],
+          fillOpacity: p.id === selectedPlot?.id ? 0.65 : 0.43,
+        })
+          .on('click', () => onPlotSelect?.(p))
+          .addTo(group);
+      }
+      if (bounds.length)
+        m.fitBounds(L.latLngBounds(bounds), { padding: [45, 45] });
+    }
+    return () => {
+      group.remove();
+    };
+  }, [mode, plots, selectedPlot?.id, onPlotSelect, ready]);
   useEffect(() => {
     if (ready && selected)
       map.current?.panTo([selected.latitude, selected.longitude]);
   }, [selected, ready]);
+  useEffect(() => {
+    if (!ready || !container.current) return;
+    const observer = new ResizeObserver(() =>
+      map.current?.invalidateSize({ pan: false }),
+    );
+    observer.observe(container.current);
+    return () => observer.disconnect();
+  }, [ready]);
+  useEffect(() => {
+    if (ready && exploreTarget)
+      map.current?.setView(
+        [exploreTarget.latitude, exploreTarget.longitude],
+        16,
+        {
+          animate: !window.matchMedia('(prefers-reduced-motion: reduce)')
+            .matches,
+        },
+      );
+  }, [exploreTarget, ready]);
   useEffect(() => {
     if (!ready || !origin || !map.current || !leaflet.current) return;
     if (claimLocation?.(origin)) {

@@ -1,4 +1,5 @@
-export const categories = [
+export type Category = { id: string; label: string; icon?: string };
+export const categories: Category[] = [
   { id: 'resto_cafe', label: 'Resto & Cafe' },
   { id: 'hotel', label: 'Hotel' },
   { id: 'food_court', label: 'Food Court' },
@@ -22,6 +23,10 @@ export type Facility = {
   verified_at?: string | null;
   status?: string;
   demo?: boolean;
+  parent_id?: string | null;
+  unit_number?: string | null;
+  tenant_count?: number;
+  category_icon?: string;
 };
 export const demoFacilities: Facility[] = [
   {

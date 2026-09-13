@@ -9,13 +9,19 @@ export function markerFace(items: Facility[]): HTMLElement {
     items.length === 1 &&
     first.category === 'resto_cafe' &&
     /kopi|coffee|cafe|kafe/i.test([first.name, ...first.tags].join(' '));
-  const category = same ? (cafe ? 'cafe' : first.category) : 'mixed';
+  const category = same
+    ? first.category_icon || (cafe ? 'cafe' : first.category)
+    : 'mixed';
   // Only trusted Lucide SVG strings are inserted, never facility text.
   wrapper.innerHTML = markerIcons[category] || markerIcons.public_facility;
-  if (items.length > 1) {
+  if (items.length > 1 || first.tenant_count) {
     const count = document.createElement('b');
     count.className = 'cluster-count';
-    count.textContent = String(items.length);
+    count.textContent = String(
+      items.length > 1 ? items.length : first.tenant_count,
+    );
+    count.title =
+      items.length > 1 ? 'Jumlah lokasi berdekatan' : 'Jumlah kantin / resto';
     wrapper.appendChild(count);
   }
   return wrapper;

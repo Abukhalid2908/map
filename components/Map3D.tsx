@@ -15,6 +15,11 @@ type Config = {
 export default function Map3D({
   facilities,
   selected,
+  exploreTarget,
+  mode = 'facilities',
+  plots = [],
+  selectedPlot,
+  onPlotSelect,
   onSelect,
   origin,
   camera,
@@ -204,7 +209,7 @@ export default function Map3D({
       markers.forEach((marker) => marker.remove());
       markers = [];
       for (const group of groupPoints(
-        facilities,
+        mode === 'facilities' ? facilities : [],
         (f) => m.project([f.longitude, f.latitude]),
         48,
       )) {
@@ -272,7 +277,93 @@ export default function Map3D({
       markers.forEach((marker) => marker.remove());
       popup?.remove();
     };
-  }, [facilities, onSelect, ready, selected?.id]);
+  }, [facilities, mode, onSelect, ready, selected?.id]);
+  useEffect(() => {
+    if (!ready || !map.current) return;
+    const m = map.current,
+      sourceId = 'land-plots',
+      fillId = 'land-plots-fill',
+      lineId = 'land-plots-line';
+    const data = {
+      type: 'FeatureCollection' as const,
+      features: plots.map((p) => ({
+        type: 'Feature' as const,
+        id: p.id,
+        properties: {
+          id: p.id,
+          status: p.status,
+          selected: p.id === selectedPlot?.id,
+        },
+        geometry: { type: 'Polygon' as const, coordinates: [p.coordinates] },
+      })),
+    };
+    if (m.getLayer(lineId)) m.removeLayer(lineId);
+    if (m.getLayer(fillId)) m.removeLayer(fillId);
+    if (m.getSource(sourceId)) m.removeSource(sourceId);
+    if (mode !== 'plots' || !plots.length) return;
+    m.addSource(sourceId, { type: 'geojson', data });
+    const color = [
+      'match',
+      ['get', 'status'],
+      'available',
+      '#279266',
+      'reserved',
+      '#d59a20',
+      'occupied',
+      '#c65c51',
+      'utility',
+      '#397fc0',
+      '#66736b',
+    ] as ML.ExpressionSpecification;
+    m.addLayer({
+      id: fillId,
+      type: 'fill',
+      source: sourceId,
+      paint: {
+        'fill-color': color,
+        'fill-opacity': ['case', ['get', 'selected'], 0.72, 0.43],
+      },
+    });
+    m.addLayer({
+      id: lineId,
+      type: 'line',
+      source: sourceId,
+      paint: {
+        'line-color': ['case', ['get', 'selected'], '#173f31', '#ffffff'],
+        'line-width': ['case', ['get', 'selected'], 4, 2],
+      },
+    });
+    const click = (e: ML.MapLayerMouseEvent) => {
+      const id = e.features?.[0]?.properties.id;
+      const plot = plots.find((p) => p.id === id);
+      if (plot) onPlotSelect?.(plot);
+    };
+    const enter = () => {
+        m.getCanvas().style.cursor = 'pointer';
+      },
+      leave = () => {
+        m.getCanvas().style.cursor = '';
+      };
+    m.on('click', fillId, click);
+    m.on('mouseenter', fillId, enter);
+    m.on('mouseleave', fillId, leave);
+    const bounds = new engine.current!.LngLatBounds();
+    for (const p of plots) for (const c of p.coordinates) bounds.extend(c);
+    if (!bounds.isEmpty())
+      m.fitBounds(bounds, {
+        padding: 90,
+        pitch: 45,
+        duration: reducedMotion.current ? 0 : 650,
+      });
+    return () => {
+      m.off('click', fillId, click);
+      m.off('mouseenter', fillId, enter);
+      m.off('mouseleave', fillId, leave);
+      if (m.getLayer(lineId)) m.removeLayer(lineId);
+      if (m.getLayer(fillId)) m.removeLayer(fillId);
+      if (m.getSource(sourceId)) m.removeSource(sourceId);
+    };
+  }, [mode, plots, selectedPlot?.id, onPlotSelect, ready]);
   useEffect(() => {
     if (ready && selected)
       map.current?.easeTo({
@@ -281,6 +372,21 @@ export default function Map3D({
         duration: reducedMotion.current ? 0 : 650,
       });
   }, [selected, ready]);
+  useEffect(() => {
+    if (!ready || !container.current) return;
+    const observer = new ResizeObserver(() => map.current?.resize());
+    observer.observe(container.current);
+    return () => observer.disconnect();
+  }, [ready]);
+  useEffect(() => {
+    if (ready && exploreTarget)
+      map.current?.easeTo({
+        center: [exploreTarget.longitude, exploreTarget.latitude],
+        zoom: 16,
+        pitch: 45,
+        duration: reducedMotion.current ? 0 : 700,
+      });
+  }, [exploreTarget, ready]);
   useEffect(() => {
     if (!ready || !origin || !map.current || !engine.current) return;
     if (claimLocation?.(origin)) {

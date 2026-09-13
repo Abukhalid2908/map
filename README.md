@@ -1,6 +1,12 @@
 # MM2100 · Jelajah Kawasan
 
-Aplikasi peta fasilitas dengan React, Vinext/Vite, Tailwind, komponen shadcn/ui, dan Leaflet. Publikasi berupa situs statis; editor hanya berjalan secara lokal. Node.js >=22.13 diperlukan (Node 22 direkomendasikan untuk build di Windows).
+Aplikasi peta fasilitas dengan React, Vinext/Vite, Tailwind, komponen shadcn/ui, Leaflet, dan MapLibre. Tersedia dua mode: demo Sites statis dengan JSON, serta backend PHP + MariaDB/MySQL dengan login admin untuk XAMPP/Azure. Node.js >=22.13 diperlukan (Node 22 direkomendasikan untuk build di Windows).
+
+## Admin dan database (XAMPP / Azure)
+
+Lihat [panduan backend dan deployment Azure](deploy/azure/README.md). Halaman `/admin/` pada server PHP menyediakan akun email/password, penyimpanan fasilitas langsung, status draft/terbit/arsip, kontrol revisi, dan audit perubahan. Database lokal bernama `mm2100_map`; konfigurasi privat berada di `backend/config.local.php`. Situs Sites sebelumnya tetap memakai JSON dan belum terhubung ke backend ini.
+
+Perintah build admin: `npm run build:admin`. Uji integrasi terisolasi: `npm run test:backend` (memerlukan MariaDB XAMPP lokal). Paket Azure: `npm run package:azure` setelah build frontend dan admin. Pengujian backend membuat lalu menghapus database dan akun khusus dengan nama acak `mm2100_test_*`, tidak memakai data aplikasi.
 
 ## Menjalankan
 
@@ -12,7 +18,7 @@ npm run editor
 
 Buka alamat yang dicetak server. Editor memakai http://127.0.0.1:5174, hanya terikat ke loopback. Jangan membuka editor ke jaringan umum. Gunakan Node yang memenuhi versi minimum; Node bawaan sistem saat pengembangan adalah v20 sehingga pengujian memakai runtime Node 24 yang tersedia.
 
-## Data fasilitas
+## Data fasilitas pada mode statis
 
 Dataset publik berada di public/facilities.json. Saat belum ada entri nyata, aplikasi membuka mode demo dengan enam fasilitas ilustrasi. Nama dan koordinat demo bukan data nyata; navigasinya dinonaktifkan. Tombol “Lihat data nyata” menampilkan dataset kosong secara jujur. Titik pusat peta hanya framing awal; bukan titik acuan jarak atau batas resmi kawasan.
 

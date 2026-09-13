@@ -1,9 +1,10 @@
 'use client';
 import { useRef, useState, useCallback } from 'react';
-import { Box, Map as MapIcon } from 'lucide-react';
+import { Box, Map as MapIcon, Satellite } from 'lucide-react';
 import LeafletMap from './LeafletMap';
 import Map3D from './Map3D';
 import type { Facility } from '@/lib/facilities';
+import type { Plot } from '@/lib/plots';
 export type MapCamera = {
   center: [number, number];
   zoom: number;
@@ -12,11 +13,19 @@ export type MapProps = {
   claimLocation?: (origin: MapProps['origin']) => boolean;
   facilities: Facility[];
   selected: Facility | null;
+  exploreTarget?: Facility | null;
   onSelect: (f: Facility) => void;
   origin?: { latitude: number; longitude: number; accuracy: number } | null;
+  mode?: 'facilities' | 'plots';
+  plots?: Plot[];
+  selectedPlot?: Plot | null;
+  onPlotSelect?: (plot: Plot) => void;
 };
 export default function MapView(props: MapProps) {
   const [mode, setMode] = useState<'2d' | '3d'>('3d');
+  const [basemap, setBasemap] = useState<'street' | 'satellite' | 'hybrid'>(
+    'street',
+  );
   const [fallback, setFallback] = useState('');
   const camera = useRef<MapCamera>({ center: [107.099, -6.297], zoom: 14 });
   const lastLocatedOrigin = useRef<MapProps['origin']>(null);
@@ -28,7 +37,12 @@ export default function MapView(props: MapProps) {
   return (
     <>
       {mode === '2d' ? (
-        <LeafletMap {...props} camera={camera} claimLocation={claimLocation} />
+        <LeafletMap
+          {...props}
+          camera={camera}
+          claimLocation={claimLocation}
+          basemap={basemap}
+        />
       ) : (
         <Map3D
           {...props}
@@ -63,6 +77,29 @@ export default function MapView(props: MapProps) {
           <Box size={15} />
           3D
         </button>
+      </fieldset>
+      <fieldset className="basemap-mode" aria-label="Latar peta">
+        {(['street', 'satellite', 'hybrid'] as const).map((value) => (
+          <button
+            key={value}
+            aria-pressed={basemap === value}
+            onClick={() => {
+              setBasemap(value);
+              if (value !== 'street') setMode('2d');
+            }}
+          >
+            {value === 'street' ? (
+              <MapIcon size={14} />
+            ) : (
+              <Satellite size={14} />
+            )}
+            {value === 'street'
+              ? 'Peta'
+              : value === 'satellite'
+                ? 'Satelit'
+                : 'Hybrid'}
+          </button>
+        ))}
       </fieldset>
       {fallback && <output className="three-status">{fallback}</output>}
     </>

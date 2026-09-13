@@ -40,3 +40,6 @@ next-env.d.ts
 /editor-dist/
 *.tsbuildinfo
 *-master.json
+/backend/config.local.php
+/admin-dist/
+/azure-dist/

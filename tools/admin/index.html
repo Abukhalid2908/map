@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin · MM2100</title>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">MM2100 <small>Pengelola kawasan</small></a>
+      <div>
+        <span id="account"></span><button id="logout" hidden>Keluar</button>
+      </div>
+    </header>
+    <main>
+      <p id="message" role="status" aria-live="polite">Memuat sesi…</p>
+      <section id="auth" class="auth card" hidden>
+        <span class="eyebrow">ADMIN DIREKTORI</span>
+        <h1 id="auth-title">Masuk ke pengelola</h1>
+        <p id="auth-description">
+          Kelola lokasi dan publikasikan informasi fasilitas.
+        </p>
+        <form id="login">
+          <label
+            >Email<input
+              id="email"
+              type="email"
+              autocomplete="username"
+              required
+              maxlength="254" /></label
+          ><label
+            >Password<input
+              id="password"
+              type="password"
+              autocomplete="current-password"
+              required
+              maxlength="72" /></label
+          ><button id="login-submit" class="primary">Masuk</button>
+        </form>
+      </section>
+      <section id="workspace" hidden>
+        <div class="toolbar">
+          <div>
+            <span class="eyebrow">PUSAT KENDALI KAWASAN</span>
+            <h1 id="workspace-title">Dashboard MM2100</h1>
+            <p id="workspace-description">
+              Pilih data yang ingin dikelola atau lihat ringkasan kawasan.
+            </p>
+          </div>
+          <div>
+            <button id="manage-dashboard">Dashboard</button
+            ><button id="manage-facilities">Fasilitas</button
+            ><button id="manage-plots">Bidang</button
+            ><button id="manage-infra">Infrastruktur</button
+            ><button id="manage-categories">Kategori</button
+            ><button id="refresh">Muat ulang</button
+            ><button id="add" class="primary">+ Tambah fasilitas</button>
+          </div>
+        </div>
+        <section id="dashboard-overview" class="dashboard-overview">
+          <article class="overview-card overview-facilities">
+            <span class="overview-icon" aria-hidden="true">●</span>
+            <div>
+              <span class="eyebrow">DIREKTORI</span>
+              <h2>Fasilitas</h2>
+              <p>Kelola lokasi, food court, tenant, dan layanan kawasan.</p>
+            </div>
+            <strong id="dashboard-facility-count">0</strong>
+            <button id="dashboard-open-facilities" class="overview-action">
+              Kelola fasilitas →
+            </button>
+          </article>
+          <article class="overview-card overview-plots">
+            <span class="overview-icon" aria-hidden="true">◇</span>
+            <div>
+              <span class="eyebrow">LAHAN</span>
+              <h2>Bidang kawasan</h2>
+              <p>Gambar polygon, status ketersediaan, zonasi, dan tenant.</p>
+            </div>
+            <strong id="dashboard-plot-count">0</strong>
+            <button id="dashboard-open-plots" class="overview-action">
+              Kelola bidang →
+            </button>
+          </article>
+          <article class="overview-card overview-infra">
+            <span class="overview-icon" aria-hidden="true">⌁</span>
+            <div>
+              <span class="eyebrow">UTILITAS</span>
+              <h2>Infrastruktur</h2>
+              <p>Kelola titik aset, pipa, kabel optik, dan jalur utilitas.</p>
+            </div>
+            <strong id="dashboard-infra-count">0</strong>
+            <button id="dashboard-open-infra" class="overview-action">
+              Kelola infrastruktur →
+            </button>
+          </article>
+        </section>
+        <section id="category-manager" class="card" hidden>
+          <div class="toolbar">
+            <h2>Kelola kategori</h2>
+            <button id="new-category">+ Kategori baru</button>
+          </div>
+          <p>
+            Food Court 1, 2, dan 3 ditambahkan sebagai fasilitas berkategori
+            Food Court. Kategori di sini adalah jenis tempat.
+          </p>
+          <div id="category-list"></div>
+          <form id="category-form" hidden>
+            <span id="category-icon-preview" aria-hidden="true"></span>
+            <label
+              >Nama kategori<input id="category-name" required maxlength="80"
+            /></label>
+            <label
+              >Ikon kategori<select id="category-icon">
+                <option value="resto_cafe">Makanan</option>
+                <option value="cafe">Kopi</option>
+                <option value="hotel">Hotel</option>
+                <option value="food_court">Pusat kuliner</option>
+                <option value="atm">Bank / ATM</option>
+                <option value="medical">Kesehatan</option>
+                <option value="public_facility">Gedung / fasilitas umum</option>
+              </select></label
+            >
+            <label
+              >Status kategori<select id="category-enabled">
+                <option value="1">Aktif</option>
+                <option value="0">Nonaktif</option>
+              </select></label
+            >
+            <button class="primary" id="save-category">Simpan kategori</button>
+          </form>
+        </section>
+        <section id="plot-manager" class="card" hidden>
+          <div class="toolbar">
+            <div>
+              <h2>Kelola bidang kawasan</h2>
+              <p>Gambar batas bidang di peta dan lengkapi atributnya.</p>
+            </div>
+            <button id="new-plot" class="primary">+ Tambah bidang</button>
+          </div>
+          <div class="plot-editor-shell">
+            <aside class="plot-browser">
+              <label
+                >Cari bidang<input
+                  id="plot-search"
+                  type="search"
+                  placeholder="Nomor, tenant, atau zonasi"
+              /></label>
+              <p id="plot-count"></p>
+              <div id="plot-list"></div>
+            </aside>
+            <div id="plot-map"></div>
+            <div class="plot-map-tools">
+              <button id="undo-point" type="button">Urungkan titik</button
+              ><button id="clear-polygon" type="button">Gambar ulang</button
+              ><span id="point-count">0 titik</span
+              ><button id="open-plot-form" class="primary" disabled>
+                Isi data bidang
+              </button>
+            </div>
+            <p id="plot-empty" class="plot-map-help">
+              Klik “Tambah bidang”, lalu klik peta minimal tiga kali.
+            </p>
+          </div>
+          <div id="plot-form-modal" class="modal-backdrop" hidden>
+            <section
+              class="plot-modal card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="plot-form-title"
+            >
+              <div class="modal-heading">
+                <div>
+                  <span class="eyebrow">DATA BIDANG</span>
+                  <h2 id="plot-form-title">Detail bidang</h2>
+                </div>
+                <button
+                  id="close-plot-form"
+                  type="button"
+                  aria-label="Tutup form"
+                >
+                  ×
+                </button>
+              </div>
+              <form id="plot-form">
+                <p id="plot-form-message" role="status" aria-live="polite"></p>
+                <div class="fields">
+                  <label
+                    >Nomor bidang<input id="p-number" required maxlength="100"
+                  /></label>
+                  <label
+                    >Status<select id="p-status">
+                      <option value="draft">Draft</option>
+                      <option value="available">Tersedia</option>
+                      <option value="reserved">Dipesan</option>
+                      <option value="occupied">Terisi</option>
+                      <option value="utility">Utilitas</option>
+                      <option value="archived">Arsip</option>
+                    </select></label
+                  >
+                  <label
+                    >Luas (m²)<input
+                      id="p-area"
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      required
+                  /></label>
+                  <label
+                    >Zonasi<input id="p-zonation" required maxlength="100"
+                  /></label>
+                  <label>Tenant<input id="p-tenant" maxlength="200" /></label>
+                  <label
+                    >Tanggal verifikasi<input id="p-verified" type="date"
+                  /></label>
+                  <label class="wide"
+                    >Sumber verifikasi<textarea id="p-source"></textarea>
+                  </label>
+                </div>
+                <p class="hint">
+                  Polygon memiliki
+                  <strong id="form-point-count">0 titik</strong>. Tutup popup
+                  untuk mengubah bentuknya di peta.
+                </p>
+                <div class="form-actions">
+                  <button id="delete-plot" class="danger" type="button" hidden>
+                    Hapus bidang
+                  </button>
+                  <button id="save-plot" class="primary">Simpan bidang</button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </section>
+        <section id="infra-manager" class="card" hidden>
+          <div class="toolbar">
+            <div>
+              <h2>Infrastruktur kawasan</h2>
+              <p>Kelola aset titik dan jalur utilitas.</p>
+            </div>
+            <div>
+              <button id="manage-infra-types">Kelola jenis aset</button
+              ><button id="open-infra-import">Import data</button
+              ><button id="new-infra" class="primary">
+                + Tambah infrastruktur
+              </button>
+            </div>
+          </div>
+          <div class="infra-layout">
+            <aside class="infra-browser">
+              <label
+                >Cari infrastruktur<input
+                  id="infra-search"
+                  type="search"
+                  placeholder="Nama atau jenis"
+              /></label>
+              <p id="infra-count">0 infrastruktur</p>
+              <div id="infra-list"></div>
+            </aside>
+            <div id="infra-draw-status" class="draw-status" hidden>
+              <strong>Mode gambar aktif</strong>
+              <span id="infra-draw-help">Klik peta untuk membuat jalur.</span>
+            </div>
+            <div id="infra-map"></div>
+            <div class="infra-map-tools">
+              <label class="geometry-picker"
+                >Bentuk<select id="infra-geometry-mode">
+                  <option value="line">Jalur</option>
+                  <option value="point">Titik</option>
+                </select></label
+              >
+              <button id="infra-undo" type="button">Urungkan titik</button
+              ><button id="infra-clear" type="button">Gambar ulang</button
+              ><span id="infra-point-count">0 titik</span
+              ><button id="open-infra-form" class="primary" disabled>
+                Isi data
+              </button>
+            </div>
+          </div>
+          <div id="infra-import-modal" class="modal-backdrop" hidden>
+            <section
+              class="plot-modal card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="infra-import-title"
+            >
+              <div class="modal-heading">
+                <div>
+                  <span class="eyebrow">BULK ADD</span>
+                  <h2 id="infra-import-title">Import infrastruktur</h2>
+                </div>
+                <button
+                  id="close-infra-import"
+                  type="button"
+                  aria-label="Tutup import"
+                >
+                  ×
+                </button>
+              </div>
+              <p class="import-intro">
+                Unggah CSV atau GeoJSON berisi titik aset dan jalur utilitas.
+                Maksimal 1.000 data per file.
+              </p>
+              <div class="import-actions">
+                <label class="file-picker">
+                  <span>Pilih file CSV / GeoJSON</span>
+                  <input
+                    id="infra-import-file"
+                    type="file"
+                    accept=".csv,.json,.geojson,text/csv,application/geo+json,application/json"
+                  />
+                </label>
+                <button id="download-infra-template" type="button">
+                  Unduh template CSV
+                </button>
+              </div>
+              <p id="infra-import-message" role="status" aria-live="polite"></p>
+              <div
+                id="infra-import-preview"
+                class="import-preview"
+                hidden
+              ></div>
+              <div class="form-actions">
+                <button id="cancel-infra-import" type="button">Batal</button>
+                <button
+                  id="save-infra-import"
+                  class="primary"
+                  type="button"
+                  disabled
+                >
+                  Import data
+                </button>
+              </div>
+            </section>
+          </div>
+          <div id="infra-type-modal" class="modal-backdrop" hidden>
+            <section
+              class="plot-modal card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="infra-type-title"
+            >
+              <div class="modal-heading">
+                <div>
+                  <span class="eyebrow">MASTER DATA</span>
+                  <h2 id="infra-type-title">Kelola jenis aset</h2>
+                </div>
+                <button id="close-infra-types" type="button" aria-label="Tutup">
+                  ×
+                </button>
+              </div>
+              <div id="infra-type-list" class="manager-list"></div>
+              <button id="new-infra-type" type="button">
+                + Jenis aset baru
+              </button>
+              <form id="infra-type-form" hidden>
+                <div class="fields">
+                  <label
+                    >Nama jenis<input
+                      id="it-label"
+                      required
+                      maxlength="80" /></label
+                  ><label
+                    >Warna<input
+                      id="it-color"
+                      type="color"
+                      value="#397fc0" /></label
+                  ><label
+                    >Status<select id="it-enabled">
+                      <option value="1">Aktif</option>
+                      <option value="0">Nonaktif</option>
+                    </select></label
+                  >
+                </div>
+                <button id="save-infra-type" class="primary">
+                  Simpan jenis aset
+                </button>
+              </form>
+            </section>
+          </div>
+          <div id="infra-form-modal" class="modal-backdrop" hidden>
+            <section
+              class="plot-modal card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="infra-title"
+            >
+              <div class="modal-heading">
+                <div>
+                  <span class="eyebrow">DATA INFRASTRUKTUR</span>
+                  <h2 id="infra-title">Detail infrastruktur</h2>
+                </div>
+                <button
+                  id="close-infra-form"
+                  type="button"
+                  aria-label="Tutup form"
+                >
+                  ×
+                </button>
+              </div>
+              <form id="infra-form">
+                <p id="infra-form-message" role="status" aria-live="polite"></p>
+                <div class="fields">
+                  <label
+                    >Nama<input id="i-name" required maxlength="160" /></label
+                  ><label
+                    >Jenis aset<select id="i-category">
+                      <option value="water_pipe">Pipa air</option>
+                      <option value="fiber_optic">Kabel optik</option>
+                      <option value="electricity">Listrik</option>
+                      <option value="drainage">Drainase</option>
+                      <option value="other">Lainnya</option>
+                    </select></label
+                  ><label
+                    >Geometri<select id="i-geometry">
+                      <option value="line">Jalur / garis</option>
+                      <option value="point">Titik aset</option>
+                    </select></label
+                  ><label
+                    >Status<select id="i-status">
+                      <option value="draft">Draft</option>
+                      <option value="published">Terbit</option>
+                      <option value="archived">Arsip</option>
+                    </select></label
+                  ><label
+                    >Tanggal verifikasi<input
+                      id="i-verified"
+                      type="date" /></label
+                  ><label class="wide"
+                    >Deskripsi<textarea id="i-description"></textarea></label
+                  ><label class="wide"
+                    >Sumber verifikasi<textarea id="i-source"></textarea>
+                  </label>
+                </div>
+                <div class="form-actions">
+                  <button id="delete-infra" class="danger" type="button" hidden>
+                    Hapus infrastruktur
+                  </button>
+                  <button id="save-infra" class="primary">
+                    Simpan infrastruktur
+                  </button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </section>
+        <div id="facility-manager" class="facility-editor-shell" hidden>
+          <aside class="card facility-browser">
+            <label
+              >Cari fasilitas<input
+                id="search"
+                type="search"
+                placeholder="Nama atau kategori"
+            /></label>
+            <p id="count"></p>
+            <div id="list"></div>
+          </aside>
+          <section class="facility-map-stage">
+            <p id="empty">Pilih fasilitas atau klik “Tambah fasilitas”.</p>
+            <div id="map"></div>
+            <div class="facility-map-tools">
+              <span id="coordinate-hint"
+                >Klik peta untuk memilih koordinat.</span
+              ><button id="open-facility-form" class="primary" disabled>
+                Isi data fasilitas
+              </button>
+            </div>
+          </section>
+          <div id="facility-form-modal" class="modal-backdrop" hidden>
+            <section
+              class="plot-modal card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="form-title"
+            >
+              <div class="modal-heading">
+                <h2 id="form-title">Detail fasilitas</h2>
+                <button
+                  id="close-facility-form"
+                  type="button"
+                  aria-label="Tutup form"
+                >
+                  ×
+                </button>
+              </div>
+              <form id="facility">
+                <p
+                  id="facility-form-message"
+                  role="status"
+                  aria-live="polite"
+                ></p>
+                <div id="fields" class="fields"></div>
+                <div class="form-actions">
+                  <button
+                    id="delete-facility"
+                    class="danger"
+                    type="button"
+                    hidden
+                  >
+                    Hapus fasilitas
+                  </button>
+                  <button id="save" class="primary">Simpan ke database</button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

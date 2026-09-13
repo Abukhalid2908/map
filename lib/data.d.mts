@@ -1,8 +1,11 @@
-import type { Facility } from './facilities';
+import type { Facility, Category } from './facilities';
+import type { Plot } from './plots';
 export type Dataset = {
   schema_version: number;
   updated_at: string;
   facilities: Facility[];
+  categories?: Category[];
+  plots?: Plot[];
 };
 export function filterFacilities(
   rows: Facility[],
@@ -17,6 +20,7 @@ export function navigationUrl(
   f: Facility,
   origin?: { latitude: number; longitude: number } | null,
 ): string;
+export function streetViewUrl(f: Facility): string;
 export function validateDataset(
   data: unknown,
   options?: { publicOnly?: boolean },

@@ -1,0 +1,70 @@
+CREATE TABLE IF NOT EXISTS admins (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ email VARCHAR(254) NOT NULL UNIQUE,
+ password_hash VARCHAR(255) NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS app_sessions (
+ token_hash CHAR(64) PRIMARY KEY,
+ admin_id BIGINT UNSIGNED NULL,
+ csrf CHAR(64) NOT NULL,
+ expires_at BIGINT NOT NULL,
+ FOREIGN KEY (admin_id) REFERENCES admins(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS login_limits (
+ bucket CHAR(64) PRIMARY KEY,
+ attempts INT NOT NULL,
+ expires_at BIGINT NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS facilities (
+ id VARCHAR(80) PRIMARY KEY,
+ payload LONGTEXT NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ revision INT NOT NULL DEFAULT 1,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ INDEX (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS plots (
+ id VARCHAR(80) PRIMARY KEY,
+ payload LONGTEXT NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ revision INT NOT NULL DEFAULT 1,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ INDEX (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS infrastructure (
+ id VARCHAR(80) PRIMARY KEY,
+ payload LONGTEXT NOT NULL,
+ status VARCHAR(16) NOT NULL,
+ revision INT NOT NULL DEFAULT 1,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ INDEX (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS infrastructure_categories (
+ id VARCHAR(40) PRIMARY KEY,
+ label VARCHAR(80) NOT NULL UNIQUE,
+ color CHAR(7) NOT NULL DEFAULT '#397fc0',
+ enabled TINYINT NOT NULL DEFAULT 1,
+ revision INT NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT IGNORE INTO infrastructure_categories(id,label,color) VALUES
+('water_pipe','Pipa air','#397fc0'),('fiber_optic','Kabel optik','#8b5fbf'),
+('electricity','Listrik','#d59a20'),('drainage','Drainase','#279266'),('other','Lainnya','#66736b');
+CREATE TABLE IF NOT EXISTS audit_log (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ admin_id BIGINT UNSIGNED NOT NULL,
+ action VARCHAR(24) NOT NULL,
+ facility_id VARCHAR(80) NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS categories (
+ id VARCHAR(40) PRIMARY KEY,
+ label VARCHAR(80) NOT NULL UNIQUE,
+ icon VARCHAR(40) NOT NULL,
+ enabled TINYINT NOT NULL DEFAULT 1,
+ revision INT NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT IGNORE INTO categories(id,label,icon) VALUES
+('resto_cafe','Resto & Cafe','resto_cafe'),('hotel','Hotel','hotel'),
+('food_court','Food Court','food_court'),('atm','ATM','atm'),
+('medical','Medis','medical'),('public_facility','Fasilitas Umum','public_facility');
