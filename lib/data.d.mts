@@ -4,6 +4,9 @@ import type { Infrastructure, InfrastructureCategory } from './infrastructure';
 export type Dataset = {
   schema_version: number;
   updated_at: string;
+  authenticated?: boolean;
+  account?: { email: string; role: string } | null;
+  csrf?: string;
   facilities: Facility[];
   categories?: Category[];
   plots?: Plot[];

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import {
   MapPin,
   Search,
@@ -17,6 +17,9 @@ import {
   Compass,
   LandPlot,
   Cable,
+  LogIn,
+  LogOut,
+  LockKeyhole,
 } from 'lucide-react';
 import {
   Sheet,
@@ -89,6 +92,15 @@ export default function Home() {
   const [info, setInfo] = useState(false);
   const [browsing, setBrowsing] = useState(false);
   const [exploreTarget, setExploreTarget] = useState<Facility | null>(null);
+  const [account, setAccount] = useState<{
+    email: string;
+    role: string;
+  } | null>(null);
+  const [csrf, setCsrf] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginBusy, setLoginBusy] = useState(false);
   useEffect(() => {
     const abort = new AbortController();
     fetch('/facilities.json', { signal: abort.signal })
@@ -102,6 +114,8 @@ export default function Home() {
         setPlots(d.plots || []);
         setInfrastructure(d.infrastructure || []);
         setInfrastructureCategories(d.infrastructure_categories || []);
+        setAccount(d.account || null);
+        setCsrf(d.csrf || '');
         setRows(
           d.facilities.map((f) => ({
             ...f,
@@ -122,6 +136,49 @@ export default function Home() {
       });
     return () => abort.abort();
   }, [retry]);
+  async function submitLogin(event: FormEvent) {
+    event.preventDefault();
+    setLoginBusy(true);
+    setLoginError('');
+    try {
+      const response = await fetch('/api/index.php?action=login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+        body: JSON.stringify({ email: loginEmail, password: loginPassword }),
+      });
+      const result = (await response.json()) as {
+        error?: string;
+        email: string;
+        role: string;
+        csrf: string;
+      };
+      if (!response.ok) throw Error(result.error || 'Login gagal.');
+      setAccount({ email: result.email, role: result.role });
+      setCsrf(result.csrf);
+      setLoginPassword('');
+      setLoading(true);
+      setRetry((value) => value + 1);
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'Login gagal.');
+    } finally {
+      setLoginBusy(false);
+    }
+  }
+  async function logout() {
+    const response = await fetch('/api/index.php?action=logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+      body: '{}',
+    });
+    const result = (await response.json()) as { csrf: string };
+    if (!response.ok) return;
+    setAccount(null);
+    setCsrf(result.csrf);
+    setSurface('facilities');
+    setPlots([]);
+    setInfrastructure([]);
+    setInfrastructureCategories([]);
+  }
   const activeRows = useMemo(
     () =>
       demo
@@ -287,33 +344,88 @@ export default function Home() {
             <MapPin size={16} />
             Fasilitas
           </button>
-          <button
-            aria-pressed={surface === 'plots'}
-            onClick={() => {
-              setSurface('plots');
-              setSelected(null);
-              setBrowsing(true);
-            }}
-          >
-            <LandPlot size={16} />
-            Bidang Kawasan
-          </button>
-          <button
-            aria-pressed={surface === 'infrastructure'}
-            onClick={() => {
-              setSurface('infrastructure');
-              setSelected(null);
-              setSelectedPlot(null);
-              setBrowsing(true);
-            }}
-          >
-            <Cable size={16} />
-            Infrastruktur
-          </button>
+          {account && (
+            <>
+              <button
+                aria-pressed={surface === 'plots'}
+                onClick={() => {
+                  setSurface('plots');
+                  setSelected(null);
+                  setBrowsing(true);
+                }}
+              >
+                <LandPlot size={16} />
+                Bidang Kawasan
+              </button>
+              <button
+                aria-pressed={surface === 'infrastructure'}
+                onClick={() => {
+                  setSurface('infrastructure');
+                  setSelected(null);
+                  setSelectedPlot(null);
+                  setBrowsing(true);
+                }}
+              >
+                <Cable size={16} />
+                Infrastruktur
+              </button>
+            </>
+          )}
         </nav>
-        <button className="header-note" onClick={() => setInfo(true)}>
-          Tentang direktori <ArrowUpRight size={15} />
-        </button>
+        <div className="header-actions">
+          <button className="header-note" onClick={() => setInfo(true)}>
+            Tentang <ArrowUpRight size={15} />
+          </button>
+          {account ? (
+            <button className="login-button is-authenticated" onClick={logout}>
+              <span>{account.email}</span>
+              <LogOut size={16} />
+            </button>
+          ) : (
+            <details className="login-menu">
+              <summary className="login-button">
+                <LogIn size={16} /> Login internal
+              </summary>
+              <div className="login-popover">
+                <div className="login-symbol">
+                  <LockKeyhole size={21} />
+                </div>
+                <strong>Akses internal MM2100</strong>
+                <p>Masuk untuk membuka data bidang dan infrastruktur.</p>
+                <form onSubmit={submitLogin} className="login-form">
+                  <label>
+                    Email
+                    <input
+                      type="email"
+                      autoComplete="username"
+                      value={loginEmail}
+                      onChange={(event) => setLoginEmail(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Password
+                    <input
+                      type="password"
+                      autoComplete="current-password"
+                      value={loginPassword}
+                      onChange={(event) => setLoginPassword(event.target.value)}
+                      required
+                    />
+                  </label>
+                  {loginError && <p role="alert">{loginError}</p>}
+                  <button
+                    type="submit"
+                    className="primary-button"
+                    disabled={loginBusy}
+                  >
+                    {loginBusy ? 'Memeriksa…' : 'Masuk'}
+                  </button>
+                </form>
+              </div>
+            </details>
+          )}
+        </div>
       </header>
       <div
         className={

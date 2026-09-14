@@ -17,7 +17,13 @@ await cp(path.join(root, 'admin-dist'), path.join(output, 'public/admin'), {
   recursive: true,
 });
 await mkdir(path.join(output, 'backend'));
-for (const file of ['api.php', 'bootstrap.php', 'schema.sql', 'categories.sql'])
+for (const file of [
+  'api.php',
+  'bootstrap.php',
+  'schema.sql',
+  'categories.sql',
+  'access-roles.sql',
+])
   await cp(
     path.join(root, 'backend', file),
     path.join(output, 'backend', file),

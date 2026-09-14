@@ -8,10 +8,12 @@ try {
     $action=$_GET['action'] ?? 'public';
     $method=$_SERVER['REQUEST_METHOD'];
     if ($action==='public' && $method==='GET') {
+        $session=current_session();
+        $account=$session['admin_id'] ? query('SELECT email,role FROM admins WHERE id=?',[$session['admin_id']])->fetch(PDO::FETCH_ASSOC) : false;
         $rows=query("SELECT payload FROM facilities WHERE status='published' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
-        $plotRows=query("SELECT payload FROM plots WHERE status NOT IN ('draft','archived') ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
-        $infraRows=query("SELECT payload FROM infrastructure WHERE status='published' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
-        reply(['schema_version'=>1,'updated_at'=>gmdate('Y-m-d\TH:i:s\Z'),'categories'=>query('SELECT id,label,icon FROM categories WHERE enabled=1 ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),'infrastructure_categories'=>query('SELECT id,label,color FROM infrastructure_categories WHERE enabled=1 ORDER BY label')->fetchAll(PDO::FETCH_ASSOC),'plots'=>array_map(fn($r)=>json_decode($r,true,512,JSON_THROW_ON_ERROR),$plotRows),'infrastructure'=>array_map(fn($r)=>json_decode($r,true,512,JSON_THROW_ON_ERROR),$infraRows),'facilities'=>resolve_parents(array_map(fn($r)=>json_decode($r,true,512,JSON_THROW_ON_ERROR),$rows))]);
+        $plotRows=$account ? query("SELECT payload FROM plots WHERE status NOT IN ('draft','archived') ORDER BY id")->fetchAll(PDO::FETCH_COLUMN) : [];
+        $infraRows=$account ? query("SELECT payload FROM infrastructure WHERE status='published' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN) : [];
+        reply(['schema_version'=>1,'updated_at'=>gmdate('Y-m-d\TH:i:s\Z'),'authenticated'=>(bool)$account,'account'=>$account?:null,'csrf'=>$session['csrf'],'categories'=>query('SELECT id,label,icon FROM categories WHERE enabled=1 ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),'infrastructure_categories'=>$account?query('SELECT id,label,color FROM infrastructure_categories WHERE enabled=1 ORDER BY label')->fetchAll(PDO::FETCH_ASSOC):[],'plots'=>array_map(fn($r)=>json_decode($r,true,512,JSON_THROW_ON_ERROR),$plotRows),'infrastructure'=>array_map(fn($r)=>json_decode($r,true,512,JSON_THROW_ON_ERROR),$infraRows),'facilities'=>resolve_parents(array_map(fn($r)=>json_decode($r,true,512,JSON_THROW_ON_ERROR),$rows))]);
     }
     $session=current_session();
     if ($method==='POST') {
@@ -24,8 +26,8 @@ try {
         if (!is_array($input) || array_is_list($input)) fail('Objek JSON diperlukan.');
     }
     if ($action==='session' && $method==='GET') {
-        $email=$session['admin_id'] ? query('SELECT email FROM admins WHERE id=?',[$session['admin_id']])->fetchColumn() : null;
-        reply(['email'=>$email ?: null,'csrf'=>$session['csrf'],'setup'=>local_setup() && (int)query('SELECT COUNT(*) FROM admins')->fetchColumn()===0]);
+        $account=$session['admin_id'] ? query('SELECT email,role FROM admins WHERE id=?',[$session['admin_id']])->fetch(PDO::FETCH_ASSOC) : false;
+        reply(['email'=>$account['email'] ?? null,'role'=>$account['role'] ?? null,'csrf'=>$session['csrf'],'setup'=>local_setup() && (int)query('SELECT COUNT(*) FROM admins')->fetchColumn()===0]);
     }
     if (in_array($action,['login','setup'],true) && $method==='POST') {
         $email=strtolower(trim(is_string($input['email'] ?? null) ? $input['email'] : ''));
@@ -47,7 +49,7 @@ try {
                 query('INSERT INTO login_limits(bucket,attempts,expires_at) VALUES (?,1,?) ON DUPLICATE KEY UPDATE attempts=IF(expires_at<?,1,attempts+1), expires_at=IF(expires_at<?,VALUES(expires_at),expires_at)',[$bucket,$now+900,$now,$now]);
                 if ((int)query('SELECT attempts FROM login_limits WHERE bucket=?',[$bucket])->fetchColumn()>10) fail('Terlalu banyak percobaan. Tunggu 15 menit.',429);
             }
-            $row=query('SELECT id,password_hash FROM admins WHERE email=?',[$email])->fetch(PDO::FETCH_ASSOC);
+            $row=query('SELECT id,password_hash,role FROM admins WHERE email=?',[$email])->fetch(PDO::FETCH_ASSOC);
             $dummy='$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
             $valid=password_verify($password,$row['password_hash'] ?? $dummy);
             if (!$row || !$valid) fail('Email atau password salah.',401);
@@ -56,9 +58,15 @@ try {
         }
         query('DELETE FROM app_sessions WHERE token_hash=?',[$session['token_hash']]);
         $session=new_session($admin);
-        reply(['email'=>$email,'csrf'=>$session['csrf']]);
+        reply(['email'=>$email,'role'=>$action==='setup'?'admin':$row['role'],'csrf'=>$session['csrf']]);
+    }
+    if ($action==='logout' && $method==='POST') {
+        query('DELETE FROM app_sessions WHERE token_hash=?',[$session['token_hash']]);
+        $session=new_session(null); reply(['csrf'=>$session['csrf']]);
     }
     if (!$session['admin_id']) fail('Silakan login sebagai admin.',401);
+    $role=query('SELECT role FROM admins WHERE id=?',[$session['admin_id']])->fetchColumn();
+    if ($role!=='admin') fail('Akun ini hanya dapat mengakses halaman internal.',403);
     if ($action==='categories' && $method==='GET') reply(['categories'=>query('SELECT * FROM categories ORDER BY label')->fetchAll(PDO::FETCH_ASSOC)]);
     if ($action==='category_save' && $method==='POST') {
         $id=$input['id']??null;$label=$input['label']??null;$icon=$input['icon']??null;$enabled=$input['enabled']??null;$revision=$input['revision']??null;
@@ -71,10 +79,6 @@ try {
             else if(query('UPDATE categories SET label=?,icon=?,enabled=?,revision=revision+1 WHERE id=? AND revision=?',[trim($label),$icon,(int)$enabled,$id,$revision])->rowCount()!==1){db()->rollBack();fail('Kategori sudah berubah. Muat ulang terlebih dahulu.',409);}
         }catch(PDOException $e){if($e->getCode()==='23000'){db()->rollBack();fail('Nama atau ID kategori sudah digunakan.',409);}throw $e;}
         query('INSERT INTO audit_log(admin_id,action,facility_id) VALUES (?,?,?)',[$session['admin_id'],'category_save',$id]);db()->commit();reply(['saved'=>true]);
-    }
-    if ($action==='logout' && $method==='POST') {
-        query('DELETE FROM app_sessions WHERE token_hash=?',[$session['token_hash']]);
-        $session=new_session(null); reply(['csrf'=>$session['csrf']]);
     }
     if ($action==='list' && $method==='GET') {
         $rows=query('SELECT payload,revision FROM facilities ORDER BY updated_at DESC,id')->fetchAll(PDO::FETCH_ASSOC);
