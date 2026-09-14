@@ -1,11 +1,14 @@
 import type { Facility, Category } from './facilities';
 import type { Plot } from './plots';
+import type { Infrastructure, InfrastructureCategory } from './infrastructure';
 export type Dataset = {
   schema_version: number;
   updated_at: string;
   facilities: Facility[];
   categories?: Category[];
   plots?: Plot[];
+  infrastructure?: Infrastructure[];
+  infrastructure_categories?: InfrastructureCategory[];
 };
 export function filterFacilities(
   rows: Facility[],

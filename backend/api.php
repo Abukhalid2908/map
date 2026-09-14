@@ -11,7 +11,7 @@ try {
         $rows=query("SELECT payload FROM facilities WHERE status='published' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
         $plotRows=query("SELECT payload FROM plots WHERE status NOT IN ('draft','archived') ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
         $infraRows=query("SELECT payload FROM infrastructure WHERE status='published' ORDER BY id")->fetchAll(PDO::FETCH_COLUMN);
-        reply(['schema_version'=>1,'updated_at'=>gmdate('Y-m-d\TH:i:s\Z'),'categories'=>query('SELECT id,label,icon FROM categories WHERE enabled=1 ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),'plots'=>array_map(fn($r)=>json_decode($r,true,512,JSON_THROW_ON_ERROR),$plotRows),'infrastructure'=>array_map(fn($r)=>json_decode($r,true,512,JSON_THROW_ON_ERROR),$infraRows),'facilities'=>resolve_parents(array_map(fn($r)=>json_decode($r,true,512,JSON_THROW_ON_ERROR),$rows))]);
+        reply(['schema_version'=>1,'updated_at'=>gmdate('Y-m-d\TH:i:s\Z'),'categories'=>query('SELECT id,label,icon FROM categories WHERE enabled=1 ORDER BY id')->fetchAll(PDO::FETCH_ASSOC),'infrastructure_categories'=>query('SELECT id,label,color FROM infrastructure_categories WHERE enabled=1 ORDER BY label')->fetchAll(PDO::FETCH_ASSOC),'plots'=>array_map(fn($r)=>json_decode($r,true,512,JSON_THROW_ON_ERROR),$plotRows),'infrastructure'=>array_map(fn($r)=>json_decode($r,true,512,JSON_THROW_ON_ERROR),$infraRows),'facilities'=>resolve_parents(array_map(fn($r)=>json_decode($r,true,512,JSON_THROW_ON_ERROR),$rows))]);
     }
     $session=current_session();
     if ($method==='POST') {

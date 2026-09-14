@@ -16,6 +16,7 @@ import {
   X,
   Compass,
   LandPlot,
+  Cable,
 } from 'lucide-react';
 import {
   Sheet,
@@ -40,6 +41,7 @@ import Link from 'next/link';
 import { flushSync } from 'react-dom';
 import MapView from '@/components/MapView';
 import PlotDirectory from '@/components/PlotDirectory';
+import InfrastructureDirectory from '@/components/InfrastructureDirectory';
 import {
   demoPlots,
   plotStatuses,
@@ -47,6 +49,10 @@ import {
   type PlotStatus,
 } from '@/lib/plots';
 import { useDeviceLocation } from '@/hooks/use-device-location';
+import type {
+  Infrastructure,
+  InfrastructureCategory,
+} from '@/lib/infrastructure';
 import {
   categories as defaultCategories,
   demoFacilities,
@@ -56,11 +62,20 @@ import {
 
 export default function Home() {
   const [categories, setCategories] = useState<Category[]>(defaultCategories);
-  const [surface, setSurface] = useState<'facilities' | 'plots'>('facilities');
+  const [surface, setSurface] = useState<
+    'facilities' | 'plots' | 'infrastructure'
+  >('facilities');
   const [plots, setPlots] = useState<Plot[]>([]),
     [selectedPlot, setSelectedPlot] = useState<Plot | null>(null);
   const [plotQuery, setPlotQuery] = useState(''),
     [plotStatus, setPlotStatus] = useState<'all' | PlotStatus>('all');
+  const [infrastructure, setInfrastructure] = useState<Infrastructure[]>([]),
+    [infrastructureCategories, setInfrastructureCategories] = useState<
+      InfrastructureCategory[]
+    >([]),
+    [infrastructureQuery, setInfrastructureQuery] = useState(''),
+    [selectedInfrastructure, setSelectedInfrastructure] =
+      useState<Infrastructure | null>(null);
   const [query, setQuery] = useState(''),
     [category, setCategory] = useState('all');
   const [selectedRecord, setSelected] = useState<Facility | null>(null);
@@ -85,6 +100,8 @@ export default function Home() {
         const definitions = d.categories || defaultCategories;
         setCategories(definitions);
         setPlots(d.plots || []);
+        setInfrastructure(d.infrastructure || []);
+        setInfrastructureCategories(d.infrastructure_categories || []);
         setRows(
           d.facilities.map((f) => ({
             ...f,
@@ -130,6 +147,18 @@ export default function Home() {
       ),
     [activePlots, plotStatus, plotQuery],
   );
+  const filteredInfrastructure = useMemo(() => {
+    const normalized = infrastructureQuery.trim().toLowerCase();
+    return infrastructure.filter((item) => {
+      const category = infrastructureCategories.find(
+        (entry) => entry.id === item.category,
+      );
+      return [item.name, item.description, category?.label || item.category]
+        .join(' ')
+        .toLowerCase()
+        .includes(normalized);
+    });
+  }, [infrastructure, infrastructureCategories, infrastructureQuery]);
   const iconSet: Record<string, typeof Coffee> = {
     resto_cafe: Utensils,
     cafe: Coffee,
@@ -268,6 +297,18 @@ export default function Home() {
           >
             <LandPlot size={16} />
             Bidang Kawasan
+          </button>
+          <button
+            aria-pressed={surface === 'infrastructure'}
+            onClick={() => {
+              setSurface('infrastructure');
+              setSelected(null);
+              setSelectedPlot(null);
+              setBrowsing(true);
+            }}
+          >
+            <Cable size={16} />
+            Infrastruktur
           </button>
         </nav>
         <button className="header-note" onClick={() => setInfo(true)}>
@@ -483,7 +524,7 @@ export default function Home() {
                     : 'Belum ada dataset'}
               </footer>
             </>
-          ) : (
+          ) : surface === 'plots' ? (
             <PlotDirectory
               plots={filteredPlots}
               query={plotQuery}
@@ -492,6 +533,15 @@ export default function Home() {
               setStatus={setPlotStatus}
               onSelect={setSelectedPlot}
               demo={!plots.length}
+            />
+          ) : (
+            <InfrastructureDirectory
+              rows={filteredInfrastructure}
+              categories={infrastructureCategories}
+              query={infrastructureQuery}
+              setQuery={setInfrastructureQuery}
+              selected={selectedInfrastructure}
+              onSelect={setSelectedInfrastructure}
             />
           )}
         </aside>
@@ -506,6 +556,9 @@ export default function Home() {
             plots={filteredPlots}
             selectedPlot={selectedPlot}
             onPlotSelect={setSelectedPlot}
+            infrastructure={filteredInfrastructure}
+            selectedInfrastructure={selectedInfrastructure}
+            onInfrastructureSelect={setSelectedInfrastructure}
           />
           <div className="map-heading">
             <Compass size={18} />
@@ -529,13 +582,19 @@ export default function Home() {
           </div>
           <div className="demo-notice">
             <span className="notice-dot" />
-            {demo ? 'Mode demo' : 'Direktori kawasan'}
+            {surface === 'infrastructure'
+              ? 'Infrastruktur kawasan'
+              : demo
+                ? 'Mode demo'
+                : 'Direktori kawasan'}
             <span>
-              {demo
-                ? 'Nama dan titik fasilitas adalah contoh.'
-                : origin
-                  ? 'Jarak langsung dari lokasi perangkat.'
-                  : 'Pilih fasilitas untuk melihat detail.'}
+              {surface === 'infrastructure'
+                ? 'Pilih titik atau jalur untuk melihat namanya.'
+                : demo
+                  ? 'Nama dan titik fasilitas adalah contoh.'
+                  : origin
+                    ? 'Jarak langsung dari lokasi perangkat.'
+                    : 'Pilih fasilitas untuk melihat detail.'}
             </span>
           </div>
         </section>

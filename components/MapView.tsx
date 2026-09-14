@@ -5,6 +5,7 @@ import LeafletMap from './LeafletMap';
 import Map3D from './Map3D';
 import type { Facility } from '@/lib/facilities';
 import type { Plot } from '@/lib/plots';
+import type { Infrastructure } from '@/lib/infrastructure';
 export type MapCamera = {
   center: [number, number];
   zoom: number;
@@ -16,10 +17,13 @@ export type MapProps = {
   exploreTarget?: Facility | null;
   onSelect: (f: Facility) => void;
   origin?: { latitude: number; longitude: number; accuracy: number } | null;
-  mode?: 'facilities' | 'plots';
+  mode?: 'facilities' | 'plots' | 'infrastructure';
   plots?: Plot[];
   selectedPlot?: Plot | null;
   onPlotSelect?: (plot: Plot) => void;
+  infrastructure?: Infrastructure[];
+  selectedInfrastructure?: Infrastructure | null;
+  onInfrastructureSelect?: (item: Infrastructure) => void;
 };
 export default function MapView(props: MapProps) {
   const [mode, setMode] = useState<'2d' | '3d'>('3d');
@@ -36,7 +40,7 @@ export default function MapView(props: MapProps) {
   }, []);
   return (
     <>
-      {mode === '2d' ? (
+      {mode === '2d' || props.mode === 'infrastructure' ? (
         <LeafletMap
           {...props}
           camera={camera}
@@ -56,7 +60,11 @@ export default function MapView(props: MapProps) {
           }}
         />
       )}
-      <fieldset className="view-mode" aria-label="Mode tampilan peta">
+      <fieldset
+        className="view-mode"
+        aria-label="Mode tampilan peta"
+        hidden={props.mode === 'infrastructure'}
+      >
         <button
           aria-pressed={mode === '2d'}
           onClick={() => {

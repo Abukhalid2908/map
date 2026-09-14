@@ -499,6 +499,25 @@ h1 > span {
   overflow: auto;
   gap: 0 !important;
 }
+.infra-public-list .facility-card[aria-pressed='true'] {
+  border-color: #397fc0;
+  background: #eef5fc;
+  box-shadow: 0 8px 20px rgba(57, 127, 192, 0.12);
+}
+.infra-public-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  place-items: center;
+  border: 3px solid rgba(255, 255, 255, 0.88);
+  border-radius: 13px;
+  color: white;
+  box-shadow: 0 7px 15px rgba(26, 60, 83, 0.2);
+}
+.infra-summary {
+  grid-template-columns: 1fr 1fr;
+}
 .detail-visual {
   height: 160px;
   flex-shrink: 0;

@@ -15,6 +15,9 @@ export default function LeafletMap({
   plots = [],
   selectedPlot,
   onPlotSelect,
+  infrastructure = [],
+  selectedInfrastructure,
+  onInfrastructureSelect,
   onSelect,
   origin,
   camera,
@@ -33,10 +36,15 @@ export default function LeafletMap({
   exploreTarget?: Facility | null;
   onSelect: (f: Facility) => void;
   origin?: { latitude: number; longitude: number; accuracy: number } | null;
-  mode?: 'facilities' | 'plots';
+  mode?: 'facilities' | 'plots' | 'infrastructure';
   plots?: import('@/lib/plots').Plot[];
   selectedPlot?: import('@/lib/plots').Plot | null;
   onPlotSelect?: (p: import('@/lib/plots').Plot) => void;
+  infrastructure?: import('@/lib/infrastructure').Infrastructure[];
+  selectedInfrastructure?: import('@/lib/infrastructure').Infrastructure | null;
+  onInfrastructureSelect?: (
+    item: import('@/lib/infrastructure').Infrastructure,
+  ) => void;
   basemap?: 'street' | 'satellite' | 'hybrid';
 }) {
   const container = useRef<HTMLDivElement>(null),
@@ -216,6 +224,63 @@ export default function LeafletMap({
       group.remove();
     };
   }, [mode, plots, selectedPlot?.id, onPlotSelect, ready]);
+  useEffect(() => {
+    if (!ready || !leaflet.current || !map.current) return;
+    const L = leaflet.current,
+      m = map.current,
+      group = L.layerGroup().addTo(m),
+      bounds: L.LatLngExpression[] = [];
+    if (mode === 'infrastructure') {
+      for (const item of infrastructure) {
+        const points = item.coordinates.map(
+          ([lng, lat]) => [lat, lng] as L.LatLngTuple,
+        );
+        bounds.push(...points);
+        const active = selectedInfrastructure?.id === item.id;
+        const shape =
+          item.geometry_type === 'point'
+            ? L.circleMarker(points[0], {
+                radius: active ? 11 : 8,
+                color: '#fff',
+                weight: 3,
+                fillColor: '#397fc0',
+                fillOpacity: 1,
+              })
+            : L.polyline(points, {
+                color: active ? '#173f31' : '#397fc0',
+                weight: active ? 7 : 5,
+                opacity: 0.9,
+              });
+        shape
+          .bindTooltip(item.name, { direction: 'top' })
+          .on('click', () => onInfrastructureSelect?.(item))
+          .addTo(group);
+      }
+      if (bounds.length && !selectedInfrastructure)
+        m.fitBounds(L.latLngBounds(bounds), { padding: [55, 55], maxZoom: 17 });
+      if (selectedInfrastructure) {
+        const selectedPoints = selectedInfrastructure.coordinates.map(
+          ([lng, lat]) => [lat, lng] as L.LatLngTuple,
+        );
+        if (selectedInfrastructure.geometry_type === 'point')
+          m.panTo(selectedPoints[0]);
+        else
+          m.fitBounds(L.latLngBounds(selectedPoints), {
+            padding: [70, 70],
+            maxZoom: 18,
+          });
+      }
+    }
+    return () => {
+      group.remove();
+    };
+  }, [
+    mode,
+    infrastructure,
+    selectedInfrastructure?.id,
+    onInfrastructureSelect,
+    ready,
+  ]);
   useEffect(() => {
     if (ready && selected)
       map.current?.panTo([selected.latitude, selected.longitude]);
