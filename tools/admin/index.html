@@ -53,6 +53,7 @@
             ><button id="manage-plots">Bidang</button
             ><button id="manage-infra">Infrastruktur</button
             ><button id="manage-categories">Kategori</button
+            ><button id="manage-accounts">Pengguna</button
             ><button id="refresh">Muat ulang</button
             ><button id="add" class="primary">+ Tambah fasilitas</button>
           </div>
@@ -128,6 +129,61 @@
               </select></label
             >
             <button class="primary" id="save-category">Simpan kategori</button>
+          </form>
+        </section>
+        <section id="account-manager" class="card" hidden>
+          <div class="toolbar">
+            <div>
+              <h2>Kelola pengguna internal</h2>
+              <p>
+                Akun internal dapat membuka Bidang Kawasan dan Infrastruktur
+                pada halaman depan.
+              </p>
+            </div>
+            <button id="new-account" class="primary">+ Tambah pengguna</button>
+          </div>
+          <div id="account-list" class="account-list"></div>
+          <form id="account-form" class="account-form" hidden>
+            <div class="modal-heading">
+              <div>
+                <span class="eyebrow">AKUN INTERNAL</span>
+                <h2 id="account-form-title">Tambah pengguna</h2>
+              </div>
+              <button
+                id="close-account-form"
+                type="button"
+                aria-label="Tutup form"
+              >
+                ×
+              </button>
+            </div>
+            <input id="account-id" type="hidden" />
+            <label
+              >Email<input
+                id="account-email"
+                type="email"
+                maxlength="254"
+                required
+                autocomplete="off"
+            /></label>
+            <label
+              >Password baru<input
+                id="account-password"
+                type="password"
+                minlength="12"
+                maxlength="72"
+                required
+                autocomplete="new-password"
+            /></label>
+            <p class="hint">
+              Minimal 12 karakter. Saat password diganti, seluruh sesi pengguna
+              tersebut akan dicabut.
+            </p>
+            <div class="form-actions">
+              <button id="delete-account" type="button" class="danger" hidden>
+                Hapus akun</button
+              ><button class="primary">Simpan akun</button>
+            </div>
           </form>
         </section>
         <section id="plot-manager" class="card" hidden>

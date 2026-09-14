@@ -67,6 +67,35 @@ try {
     if (!$session['admin_id']) fail('Silakan login sebagai admin.',401);
     $role=query('SELECT role FROM admins WHERE id=?',[$session['admin_id']])->fetchColumn();
     if ($role!=='admin') fail('Akun ini hanya dapat mengakses halaman internal.',403);
+    if ($action==='account_list' && $method==='GET') {
+        reply(['accounts'=>query("SELECT id,email,role,created_at FROM admins ORDER BY role,email")->fetchAll(PDO::FETCH_ASSOC)]);
+    }
+    if ($action==='account_save' && $method==='POST') {
+        $email=strtolower(trim(is_string($input['email']??null)?$input['email']:''));
+        $password=is_string($input['password']??null)?$input['password']:'';
+        $id=$input['id']??null;
+        if(!filter_var($email,FILTER_VALIDATE_EMAIL)||strlen($email)>254||strlen($password)<12||strlen($password)>72||($id!==null&&!is_int($id)))fail('Email atau password akun tidak valid.',422);
+        try {
+            if($id===null)query("INSERT INTO admins(email,password_hash,role) VALUES (?,?,'internal')",[$email,password_hash($password,PASSWORD_DEFAULT)]);
+            else {
+                if((int)$id===(int)$session['admin_id'])fail('Gunakan prosedur reset admin untuk akun Anda sendiri.',422);
+                if(query("UPDATE admins SET email=?,password_hash=? WHERE id=? AND role='internal'",[$email,password_hash($password,PASSWORD_DEFAULT),$id])->rowCount()!==1)fail('Akun internal tidak ditemukan.',404);
+                query('DELETE FROM app_sessions WHERE admin_id=?',[$id]);
+            }
+        } catch(PDOException $e) { if($e->getCode()==='23000')fail('Email sudah digunakan.',409); throw $e; }
+        query('INSERT INTO audit_log(admin_id,action,facility_id) VALUES (?,?,?)',[$session['admin_id'],$id===null?'account_create':'account_reset',$email]);
+        reply(['saved'=>true]);
+    }
+    if ($action==='account_delete' && $method==='POST') {
+        $id=$input['id']??null;
+        if(!is_int($id)||(int)$id===(int)$session['admin_id'])fail('Akun tidak valid.',422);
+        $email=query("SELECT email FROM admins WHERE id=? AND role='internal'",[$id])->fetchColumn();
+        if(!$email)fail('Akun internal tidak ditemukan.',404);
+        query('DELETE FROM app_sessions WHERE admin_id=?',[$id]);
+        query("DELETE FROM admins WHERE id=? AND role='internal'",[$id]);
+        query('INSERT INTO audit_log(admin_id,action,facility_id) VALUES (?,?,?)',[$session['admin_id'],'account_delete',$email]);
+        reply(['deleted'=>true]);
+    }
     if ($action==='categories' && $method==='GET') reply(['categories'=>query('SELECT * FROM categories ORDER BY label')->fetchAll(PDO::FETCH_ASSOC)]);
     if ($action==='category_save' && $method==='POST') {
         $id=$input['id']??null;$label=$input['label']??null;$icon=$input['icon']??null;$enabled=$input['enabled']??null;$revision=$input['revision']??null;

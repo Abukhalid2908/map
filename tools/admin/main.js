@@ -68,7 +68,80 @@ let categoryRows = [],
   infraPoints = [],
   infraTypeRows = [],
   infraTypeRecord = null,
-  infraTypeDirty = false;
+  infraTypeDirty = false,
+  accountRows = [];
+async function loadAccounts() {
+  const data = await api('account_list');
+  accountRows = data.accounts;
+  $('account-list').replaceChildren();
+  for (const account of accountRows) {
+    const card = document.createElement('article');
+    card.className = 'account-card';
+    const copy = document.createElement('div');
+    const name = document.createElement('strong');
+    name.textContent = account.email;
+    const meta = document.createElement('span');
+    meta.textContent =
+      account.role === 'admin' ? 'Administrator' : 'Pengguna internal';
+    copy.append(name, meta);
+    card.append(copy);
+    if (account.role === 'internal') {
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.textContent = 'Atur akun';
+      edit.onclick = () => editAccount(account);
+      card.append(edit);
+    }
+    $('account-list').append(card);
+  }
+}
+function editAccount(account = null) {
+  $('account-form').hidden = false;
+  $('account-id').value = account?.id || '';
+  $('account-email').value = account?.email || '';
+  $('account-password').value = '';
+  $('account-form-title').textContent = account
+    ? 'Atur pengguna'
+    : 'Tambah pengguna';
+  $('delete-account').hidden = !account;
+  $('account-email').focus();
+}
+$('new-account').onclick = () => editAccount();
+$('close-account-form').onclick = () => {
+  $('account-form').hidden = true;
+};
+$('account-form').onsubmit = async (event) => {
+  event.preventDefault();
+  try {
+    const id = $('account-id').value;
+    await api('account_save', {
+      id: id ? Number(id) : null,
+      email: $('account-email').value,
+      password: $('account-password').value,
+    });
+    $('account-form').hidden = true;
+    message('Akun internal tersimpan.');
+    await loadAccounts();
+  } catch (error) {
+    message(error.message, true);
+  }
+};
+$('delete-account').onclick = async () => {
+  const id = Number($('account-id').value);
+  if (
+    !id ||
+    !confirm('Hapus akun internal ini? Pengguna akan langsung keluar.')
+  )
+    return;
+  try {
+    await api('account_delete', { id });
+    $('account-form').hidden = true;
+    message('Akun internal dihapus.');
+    await loadAccounts();
+  } catch (error) {
+    message(error.message, true);
+  }
+};
 async function loadCategories() {
   const data = await api('categories');
   categoryRows = data.categories;
@@ -119,6 +192,7 @@ function showAdminSection(section) {
   $('plot-manager').hidden = section !== 'plots';
   $('infra-manager').hidden = section !== 'infra';
   $('category-manager').hidden = section !== 'categories';
+  $('account-manager').hidden = section !== 'accounts';
   $('add').hidden = section !== 'facilities';
   const headings = {
     dashboard: [
@@ -141,6 +215,10 @@ function showAdminSection(section) {
       'Kelola kategori',
       'Atur kategori yang tersedia pada direktori fasilitas.',
     ],
+    accounts: [
+      'Kelola pengguna internal',
+      'Daftarkan akses untuk data bidang dan infrastruktur.',
+    ],
   };
   $('workspace-title').textContent = headings[section][0];
   $('workspace-description').textContent = headings[section][1];
@@ -150,6 +228,7 @@ function showAdminSection(section) {
     ['manage-plots', 'plots'],
     ['manage-infra', 'infra'],
     ['manage-categories', 'categories'],
+    ['manage-accounts', 'accounts'],
   ])
     $(id).setAttribute('aria-pressed', String(section === value));
 }
@@ -165,6 +244,15 @@ $('manage-facilities').onclick = () => {
 $('manage-categories').onclick = () => {
   if (!canLeave()) return;
   showAdminSection('categories');
+};
+$('manage-accounts').onclick = async () => {
+  if (!canLeave()) return;
+  showAdminSection('accounts');
+  try {
+    await loadAccounts();
+  } catch (error) {
+    message(error.message, true);
+  }
 };
 $('manage-plots').onclick = async () => {
   if (!canLeave()) return;
